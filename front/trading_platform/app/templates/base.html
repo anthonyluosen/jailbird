@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{% block title %}{% endblock %}</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
+    {% block styles %}{% endblock %}
+</head>
+<body>
+    <nav class="navbar">
+        <div class="nav-brand">量化交易系统</div>
+        <div class="nav-links">
+            {% if current_user.is_authenticated %}
+            <a href="{{ url_for('main.index') }}" class="nav-link">
+                <i class="fas fa-home"></i> 首页
+            </a>
+            <a href="{{ url_for('main.logs') }}" class="nav-link">
+                <i class="fas fa-file-alt"></i> 日志监控
+            </a>
+            <a href="{{ url_for('auth.logout') }}" class="nav-link">
+                <i class="fas fa-sign-out-alt"></i> 退出
+            </a>
+            <a href="{{ url_for('oms.orders_page') }}" class="nav-link">
+                <i class="fas fa-shopping-cart"></i> 订单管理
+            </a>
+            <span class="nav-user">
+                <i class="fas fa-user"></i> {{ current_user.username }}
+            </span>
+            {% endif %}
+        </div>
+    </nav>
+    
+    {% with messages = get_flashed_messages() %}
+    {% if messages %}
+    <div class="flash-messages">
+        {% for message in messages %}
+        <div class="flash-message">{{ message }}</div>
+        {% endfor %}
+    </div>
+    {% endif %}
+    {% endwith %}
+    
+    {% block content %}{% endblock %}
+    {% block scripts %}{% endblock %}
+
+    <style>
+    :root {
+        --primary-color: #2196F3;
+        --secondary-color: #607D8B;
+        --success-color: #4CAF50;
+        --error-color: #f44336;
+        --background-color: #f5f5f5;
+        --panel-background: #ffffff;
+        --border-color: #e0e0e0;
+        --text-color: #333333;
+        --text-secondary: #666666;
+    }
+
+    body {
+        margin: 0;
+        padding: 0;
+        font-family: Arial, sans-serif;
+        background: var(--background-color);
+    }
+
+    .navbar {
+        background: var(--primary-color);
+        padding: 15px 20px;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        color: white;
+        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    }
+
+    .nav-brand {
+        font-size: 1.2em;
+        font-weight: bold;
+    }
+
+    .nav-links {
+        display: flex;
+        gap: 20px;
+    }
+
+    .nav-link {
+        color: white;
+        text-decoration: none;
+        padding: 8px 16px;
+        border-radius: 4px;
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        transition: background-color 0.3s;
+    }
+
+    .nav-link:hover {
+        background: rgba(255,255,255,0.2);
+    }
+
+    .nav-link i {
+        font-size: 1.1em;
+    }
+
+    .flash-messages {
+        padding: 10px 20px;
+    }
+
+    .flash-message {
+        padding: 10px;
+        margin: 5px 0;
+        border-radius: 4px;
+        background: #fff3cd;
+        color: #856404;
+        border: 1px solid #ffeeba;
+    }
+    </style>
+</body>
+</html> 

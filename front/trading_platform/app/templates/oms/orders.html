@@ -1,0 +1,255 @@
+{% extends "base.html" %}
+
+{% block title %}订单管理{% endblock %}
+
+{% block content %}
+<div class="orders-container">
+    <!-- 订单统计面板 -->
+    <div class="order-stats">
+        <div class="stat-card">
+            <h3>今日订单</h3>
+            <span id="todayOrderCount">0</span>
+        </div>
+        <div class="stat-card">
+            <h3>待成交</h3>
+            <span id="pendingOrderCount">0</span>
+        </div>
+        <div class="stat-card">
+            <h3>已成交</h3>
+            <span id="filledOrderCount">0</span>
+        </div>
+        <div class="stat-card">
+            <h3>已撤销</h3>
+            <span id="cancelledOrderCount">0</span>
+        </div>
+    </div>
+
+    <!-- 订单列表 -->
+    <div class="orders-table-container">
+        <table class="orders-table">
+            <thead>
+                <tr>
+                    <th>时间</th>
+                    <th>订单号</th>
+                    <th>代码</th>
+                    <th>方向</th>
+                    <th>类型</th>
+                    <th>委托价</th>
+                    <th>成交价</th>
+                    <th>最新价</th>
+                    <th>委托量</th>
+                    <th>成交量</th>
+                    <th>状态</th>
+                    <th>平台</th>
+                    <th>策略名称</th>
+                    <th>下单策略</th>
+                    <th>父订单ID</th>
+                </tr>
+            </thead>
+            <tbody id="ordersTableBody"></tbody>
+        </table>
+    </div>
+</div>
+
+<style>
+.orders-container {
+    padding: 20px;
+    background: #f5f5f5;
+}
+
+.order-stats {
+    display: flex;
+    gap: 20px;
+    margin-bottom: 30px;
+}
+
+.stat-card {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    flex: 1;
+    text-align: center;
+}
+
+.stat-card h3 {
+    margin: 0;
+    color: #666;
+    font-size: 14px;
+}
+
+.stat-card span {
+    display: block;
+    font-size: 24px;
+    font-weight: bold;
+    margin-top: 10px;
+    color: #333;
+}
+
+.orders-table-container {
+    background: white;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    overflow-x: auto;
+}
+
+.orders-table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+.orders-table th,
+.orders-table td {
+    padding: 12px;
+    text-align: left;
+    border-bottom: 1px solid #eee;
+    white-space: nowrap;
+}
+
+.orders-table th {
+    background: #f8f9fa;
+    font-weight: 500;
+    color: #666;
+}
+
+.direction-buy { color: #c62828; }
+.direction-sell { color: #2e7d32; }
+
+.status-badge {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.status-submitting { background: #e3f2fd; color: #1976d2; }
+.status-submitted { background: #e8f5e9; color: #2e7d32; }
+.status-partial_filled { background: #fff3e0; color: #f57c00; }
+.status-filled { background: #e8f5e9; color: #2e7d32; }
+.status-cancelled { background: #fafafa; color: #616161; }
+.status-rejected { background: #ffebee; color: #c62828; }
+
+.price-change {
+    display: inline-block;
+    padding: 2px 4px;
+    border-radius: 2px;
+    font-size: 12px;
+}
+
+.price-up { color: #c62828; }
+.price-down { color: #2e7d32; }
+
+.strategy-badge {
+    padding: 4px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    background: #e8eaf6;
+    color: #3f51b5;
+}
+
+.parent-id {
+    display: inline-block;
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    background-color: #f0f0f0;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-size: 12px;
+    color: #666;
+}
+
+.no-parent {
+    color: #999;
+    font-style: italic;
+}
+
+.order-id {
+    display: inline-block;
+    max-width: 120px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.traded-price {
+    font-weight: bold;
+    color: #2e7d32;
+}
+</style>
+
+<script>
+function updateOrderStats(orders) {
+    const stats = {
+        today: orders.length,
+        pending: orders.filter(o => o.status === 'SUBMITTING' || o.status === 'SUBMITTED').length,
+        filled: orders.filter(o => o.status === 'FILLED').length,
+        cancelled: orders.filter(o => o.status === 'CANCELLED').length
+    };
+    
+    document.getElementById('todayOrderCount').textContent = stats.today;
+    document.getElementById('pendingOrderCount').textContent = stats.pending;
+    document.getElementById('filledOrderCount').textContent = stats.filled;
+    document.getElementById('cancelledOrderCount').textContent = stats.cancelled;
+}
+
+function formatPrice(price, lastPrice) {
+    if (!lastPrice) return price.toFixed(3);
+    const diff = ((price - lastPrice) / lastPrice * 100).toFixed(2);
+    const cls = diff > 0 ? 'price-up' : diff < 0 ? 'price-down' : '';
+    return `${price.toFixed(3)} <span class="${cls}">(${diff}%)</span>`;
+}
+
+function updateOrders(orders) {
+    const tbody = document.getElementById('ordersTableBody');
+    tbody.innerHTML = '';
+    
+    orders.forEach(order => {
+        const tr = document.createElement('tr');
+        
+        // 添加父订单ID的样式处理
+        const parentIdDisplay = order.parent_id ? 
+            `<span class="parent-id" title="${order.parent_id}">${order.parent_id}</span>` : 
+            '<span class="no-parent">-</span>';
+            
+        tr.innerHTML = `
+            <td>${new Date(order.create_time).toLocaleTimeString()}</td>
+            <td><span class="order-id" title="${order.order_id}">${order.order_id}</span></td>
+            <td>${order.symbol}</td>
+            <td class="direction-${order.direction.toLowerCase()}">${order.direction}</td>
+            <td>${order.order_type || '-'}</td>
+            <td>${order.price}</td>
+            <td>${order.traded_price ? `<span class="traded-price">${order.traded_price}</span>` : '-'}</td>
+            <td>${order.last_price || '-'}</td>
+            <td>${order.volume}</td>
+            <td>${order.filled_volume}</td>
+            <td><span class="status-badge status-${order.status.toLowerCase()}">${order.status}</span></td>
+            <td>${order.trader_platform}</td>
+            <td>${order.strategy_name || '-'}</td>
+            <td>${order.execution_strategy || '-'}</td>
+            <td>${parentIdDisplay}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+    
+    updateOrderStats(orders);
+}
+
+function refreshOrders() {
+    fetch('/oms/api/orders')
+        .then(response => response.json())
+        .then(orders => {
+            updateOrders(orders);
+        })
+        .catch(error => console.error('获取订单失败:', error));
+}
+
+// 页面加载完成后开始定时刷新
+document.addEventListener('DOMContentLoaded', () => {
+    refreshOrders();
+    setInterval(refreshOrders, 3000);
+});
+</script>
+{% endblock %} 
