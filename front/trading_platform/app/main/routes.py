@@ -25,7 +25,7 @@ def index():
     # 规范化路径，统一使用正斜杠
     base_folder = os.path.normpath(base_folder).replace('\\', '/')
     folder_path = os.path.normpath(folder_path).replace('\\', '/')
-
+    print(base_folder,folder_path)
     # 更安全的路径验证
     try:
         # 使用 os.path.abspath 获取绝对路径
@@ -95,7 +95,6 @@ def logs():
     
     # 规范化路径
     folder_path = os.path.normpath(folder_path).replace('\\', '/')
-    
     try:
         # 验证路径安全性
         abs_base_folder = os.path.abspath(base_folder).replace('\\', '/')

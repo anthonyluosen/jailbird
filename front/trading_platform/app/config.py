@@ -17,5 +17,6 @@ class Config:
     @staticmethod
     def init_app(app):
         # 确保日志目录存在
+        print(app.config['LOG_FOLDER'])
         os.makedirs(app.config['LOG_FOLDER'], exist_ok=True)
     
