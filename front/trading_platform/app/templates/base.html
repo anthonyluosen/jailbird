@@ -22,6 +22,11 @@
             <a href="{{ url_for('oms.orders_page') }}" class="nav-link">
                 <i class="fas fa-shopping-cart"></i> 订单管理
             </a>
+            {% if current_user.is_authenticated and current_user.is_super_admin %}
+            <a href="{{ url_for('auth.admin_panel') }}" class="nav-link">
+                <i class="fas fa-users-cog"></i> 用户管理
+            </a>
+            {% endif %}
             <span class="nav-user">
                 <i class="fas fa-user"></i> {{ current_user.username }}
             </span>

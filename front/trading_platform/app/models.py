@@ -9,6 +9,7 @@ class User(UserMixin, db.Model):
     username = db.Column(db.String(64), unique=True, nullable=False, index=True)
     password_hash = db.Column(db.String(128))
     is_admin = db.Column(db.Boolean, default=False)
+    is_super_admin = db.Column(db.Boolean, default=False)  # 添加超级管理员字段
 
     def __repr__(self):
         return f'<User {self.username}>'
@@ -18,7 +19,7 @@ class User(UserMixin, db.Model):
 
     def check_password(self, password):
         return check_password_hash(self.password_hash, password)
-
+        # return True
 @login.user_loader
 def load_user(id):
     return User.query.get(int(id)) 
