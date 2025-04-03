@@ -5,18 +5,15 @@ from flask_socketio import emit
 from datetime import datetime
 from app.oms.storage import DataStorage
 import traceback
+import os
+from itertools import groupby
+from operator import itemgetter
 # 全局的交易系统实例
 trading_system = None
 main_engine = None
 
 # 创建数据库连接
-storage = DataStorage("trading_data.db")
-
-# def init_oms():
-#     """初始化OMS"""
-#     global trading_system, main_engine
-#     if trading_system is None:
-#         trading_system, main_engine = init_trading_system()
+storage = DataStorage(os.getenv('TRADING_DATA_PATH'))
 
 @bp.route('/orders')
 @login_required
@@ -28,12 +25,13 @@ def orders_page():
 @bp.route('/api/orders')
 @login_required
 def get_orders():
-    """获取所有活动订单"""
+    """获取所有活动订单，对于相同parent_id的订单只返回成交量最大的那一个，然后按时间排序"""
     try:
-        orders = []
+        all_orders = []
         active_orders = storage.get_active_orders()
-        # print(f"从数据库获取到 {len(active_orders)} 个活动订单")
+        print(f"从数据库获取到 {len(active_orders)} 个活动订单")
         
+        # 首先将所有订单转换为字典形式
         for order in active_orders:
             order_data = {
                 'order_id': order.order_id,
@@ -51,51 +49,34 @@ def get_orders():
                 'execution_strategy': getattr(order, 'execution_strategy', None),
                 'traded_price': getattr(order, 'traded_price', None)
             }
-            orders.append(order_data)
+            all_orders.append(order_data)
+        
+        # 分组处理订单
+        filtered_orders = []
+        
+        # 将有parent_id的订单和没有的分开处理
+        orders_with_parent = [o for o in all_orders if o['order_id']]
+        orders_without_parent = [o for o in all_orders if not o['order_id']]
+        
+        # 直接添加没有parent_id的订单
+        filtered_orders.extend(orders_without_parent)
+        
+        # 按parent_id分组，找出每组中成交量最大的
+        if orders_with_parent:
+            # 按parent_id排序
+            orders_with_parent.sort(key=lambda x: x['order_id'])
             
-            # 添加调试信息，打印每个订单的关键字段
-            # print(f"订单ID: {order_data['order_id']}, 成交价: {order_data['traded_price']}")
-        print(orders)
-        return jsonify(orders)
+            # 按parent_id分组
+            for parent_id, group in groupby(orders_with_parent, key=lambda x: x['order_id']):
+                group_list = list(group)
+                # 找出成交量最大的订单
+                max_filled_order = max(group_list, key=lambda x: x['filled_volume'] or 0)
+                filtered_orders.append(max_filled_order)
+        
+        # 对过滤后的订单按创建时间排序（降序，最新的订单在前面）
+        sorted_filtered_orders = sorted(filtered_orders, key=lambda x: x['create_time'], reverse=True)
+        return jsonify(sorted_filtered_orders)
     except Exception as e:
         print(f"获取订单失败: {e}{traceback.format_exc()}")
         return jsonify([])
 
-# @bp.route('/api/place_order', methods=['POST'])
-# @login_required
-# def place_order():
-#     """下单接口"""
-#     if trading_system:
-#         data = request.json
-#         try:
-#             trading_system.place_order(
-#                 symbol=data['symbol'],
-#                 direction=data['direction'],
-#                 price=float(data['price']),
-#                 volume=float(data['volume'])
-#             )
-#             return jsonify({'status': 'success'})
-#         except Exception as e:
-#             return jsonify({'status': 'error', 'message': str(e)})
-#     return jsonify({'status': 'error', 'message': 'Trading system not initialized'})
-
-# def handle_order_update(event: Event):
-#     """处理订单更新事件"""
-#     order = event.data
-#     socketio.emit('order_update', {
-#         'order_id': order.order_id,
-#         'symbol': order.symbol,
-#         'direction': order.direction,
-#         'price': order.price,
-#         'volume': order.volume,
-#         'status': order.status.value,
-#         'filled_volume': order.filled_volume,
-#         'create_time': order.create_time.isoformat(),
-#         'trader_platform': order.trader_platform,
-#         'is_active': order.is_active
-#     }, namespace='/ws/orders')
-
-# # 在初始化时注册事件处理函数
-# def register_handlers():
-#     if main_engine:
-#         main_engine.event_engine.register(EventType.ORDER, handle_order_update) 
