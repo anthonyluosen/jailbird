@@ -1,0 +1,692 @@
+{% extends "base.html" %}
+
+{% block title %}管理员面板{% endblock %}
+
+{% block content %}
+<div class="admin-container">
+    <div class="glass-panel admin-header">
+        <h1><i class="fas fa-users-cog"></i> 用户管理</h1>
+        <a href="{{ url_for('main.index') }}" class="btn btn-secondary">
+            <i class="fas fa-arrow-left"></i> 返回主页
+        </a>
+    </div>
+    
+    <div class="glass-panel admin-content">
+        {% with messages = get_flashed_messages() %}
+        {% if messages %}
+        <div class="flash-messages">
+            {% for message in messages %}
+            <div class="flash-message">
+                <i class="fas fa-info-circle"></i> {{ message }}
+                <button class="close-button" onclick="this.parentElement.style.display='none';">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+            {% endfor %}
+        </div>
+        {% endif %}
+        {% endwith %}
+        
+        <div class="action-bar">
+            <a href="{{ url_for('auth.add_user') }}" class="btn btn-primary">
+                <i class="fas fa-plus"></i> 添加用户
+            </a>
+            <div class="search-box">
+                <i class="fas fa-search"></i>
+                <input type="text" id="userSearch" placeholder="搜索用户..." onkeyup="searchUsers()">
+                <div class="search-result-count"><span id="resultCount">{{ users|length }}</span> 个用户</div>
+            </div>
+        </div>
+        
+        <div class="users-table">
+            <table id="usersTable">
+                <thead>
+                    <tr>
+                        <th width="8%">ID</th>
+                        <th width="40%">用户名</th>
+                        <th width="16%">管理员</th>
+                        <th width="16%">超级管理员</th>
+                        <th width="20%">操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in users %}
+                    <tr class="user-row" data-id="{{ user.id }}">
+                        <td>{{ user.id }}</td>
+                        <td>
+                            <div class="user-info">
+                                <div class="user-avatar">{{ user.username[0] | upper }}</div>
+                                <span>{{ user.username }}</span>
+                            </div>
+                        </td>
+                        <td>
+                            {% if user.is_admin %}
+                            <span class="admin-badge"><i class="fas fa-check-circle"></i> 是</span>
+                            {% else %}
+                            <span class="user-badge"><i class="fas fa-times-circle"></i> 否</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if user.is_super_admin %}
+                            <span class="super-admin-badge"><i class="fas fa-crown"></i> 是</span>
+                            {% else %}
+                            <span class="user-badge"><i class="fas fa-times-circle"></i> 否</span>
+                            {% endif %}
+                        </td>
+                        <td class="actions">
+                            <a href="{{ url_for('auth.edit_user', id=user.id) }}" class="btn btn-sm btn-edit" title="编辑用户">
+                                <i class="fas fa-edit"></i> 编辑
+                            </a>
+                            <form action="{{ url_for('auth.delete_user', id=user.id) }}" method="post" class="delete-form">
+                                <button type="submit" class="btn btn-sm btn-delete" onclick="return confirmDelete(event, {{ user.id }})" title="删除用户">
+                                    <i class="fas fa-trash"></i> 删除
+                                </button>
+                            </form>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        
+        {% if not users %}
+        <div class="no-data">
+            <i class="fas fa-user-slash"></i>
+            <p>暂无用户数据</p>
+            <a href="{{ url_for('auth.add_user') }}" class="btn btn-primary">
+                <i class="fas fa-plus"></i> 添加第一个用户
+            </a>
+        </div>
+        {% endif %}
+    </div>
+    
+    <!-- 删除确认对话框 -->
+    <div id="deleteModal" class="modal">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2><i class="fas fa-exclamation-triangle"></i> 确认删除</h2>
+                <span class="close" onclick="closeModal()">&times;</span>
+            </div>
+            <div class="modal-body">
+                <p>您确定要删除此用户吗？</p>
+                <p class="warning-text">此操作无法撤销，请谨慎操作。</p>
+            </div>
+            <div class="modal-footer">
+                <button class="btn btn-secondary" onclick="closeModal()">取消</button>
+                <button id="confirmDeleteBtn" class="btn btn-danger">删除</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+:root {
+    --gradient-start: rgba(255, 255, 255, 0.8);
+    --gradient-end: rgba(255, 255, 255, 0.2);
+    --glass-border: rgba(255, 255, 255, 0.5);
+    --glass-shadow: rgba(0, 0, 0, 0.1);
+}
+
+.admin-container {
+    padding: 20px;
+    background-color: var(--background-color);
+    min-height: 100vh;
+    background-image: linear-gradient(120deg, #e0f7fa 0%, #bbdefb 100%);
+}
+
+.glass-panel {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.125);
+    border-radius: 12px;
+    box-shadow: 
+        0 8px 32px rgba(0, 0, 0, 0.05),
+        0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.admin-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 20px;
+    padding: 20px 30px;
+    transition: all 0.3s ease;
+}
+
+.admin-header:hover {
+    box-shadow: 
+        0 10px 40px rgba(0, 0, 0, 0.08),
+        0 3px 10px rgba(0, 0, 0, 0.08);
+}
+
+.admin-header h1 {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin: 0;
+    color: var(--primary-color);
+    font-weight: 600;
+    font-size: 1.8rem;
+}
+
+.admin-content {
+    padding: 30px;
+    position: relative;
+    transition: all 0.3s ease;
+}
+
+.admin-content:hover {
+    box-shadow: 
+        0 10px 40px rgba(0, 0, 0, 0.08),
+        0 3px 10px rgba(0, 0, 0, 0.08);
+}
+
+.flash-messages {
+    margin-bottom: 25px;
+}
+
+.flash-message {
+    padding: 15px;
+    background-color: rgba(212, 237, 218, 0.8);
+    border-left: 5px solid #28a745;
+    border-radius: 6px;
+    color: #155724;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    animation: slideIn 0.4s ease-out;
+    backdrop-filter: blur(5px);
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
+}
+
+@keyframes slideIn {
+    from { opacity: 0; transform: translateY(-20px); }
+    to { opacity: 1; transform: translateY(0); }
+}
+
+.flash-message i {
+    margin-right: 10px;
+    font-size: 1.1em;
+}
+
+.close-button {
+    background: transparent;
+    border: none;
+    color: #155724;
+    cursor: pointer;
+    font-size: 16px;
+    opacity: 0.6;
+    transition: opacity 0.2s;
+}
+
+.close-button:hover {
+    opacity: 1;
+}
+
+.action-bar {
+    margin-bottom: 25px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 15px;
+}
+
+.search-box {
+    position: relative;
+    display: flex;
+    align-items: center;
+}
+
+.search-box i {
+    position: absolute;
+    left: 12px;
+    color: var(--text-secondary);
+}
+
+.search-box input {
+    padding: 10px 12px 10px 35px;
+    border: 1px solid rgba(0, 0, 0, 0.1);
+    border-radius: 30px;
+    font-size: 14px;
+    width: 220px;
+    transition: all 0.3s;
+    background: rgba(255, 255, 255, 0.8);
+    backdrop-filter: blur(5px);
+}
+
+.search-box input:focus {
+    width: 280px;
+    border-color: var(--primary-color);
+    outline: none;
+    box-shadow: 0 0 0 3px rgba(33, 150, 243, 0.15);
+    background: rgba(255, 255, 255, 0.95);
+}
+
+.search-result-count {
+    position: absolute;
+    right: 12px;
+    font-size: 12px;
+    color: var(--text-secondary);
+    pointer-events: none;
+}
+
+.users-table {
+    overflow-x: auto;
+    border-radius: 10px;
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    background: rgba(255, 255, 255, 0.6);
+    backdrop-filter: blur(10px);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.05);
+}
+
+table {
+    width: 100%;
+    border-collapse: collapse;
+}
+
+th, td {
+    padding: 15px;
+    text-align: left;
+}
+
+th {
+    background-color: rgba(33, 150, 243, 0.8);
+    color: white;
+    font-weight: 600;
+    letter-spacing: 0.3px;
+    border-bottom: none;
+    position: sticky;
+    top: 0;
+    z-index: 10;
+}
+
+th:first-child {
+    border-top-left-radius: 10px;
+}
+
+th:last-child {
+    border-top-right-radius: 10px;
+}
+
+tr {
+    border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+    transition: all 0.2s;
+}
+
+.user-row:hover {
+    background-color: rgba(255, 255, 255, 0.9);
+    transform: translateY(-2px);
+    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.05);
+}
+
+tr:last-child {
+    border-bottom: none;
+}
+
+.user-info {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.user-avatar {
+    width: 34px;
+    height: 34px;
+    background: linear-gradient(135deg, #42a5f5, #2196f3);
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    font-weight: bold;
+    font-size: 16px;
+}
+
+.actions {
+    display: flex;
+    gap: 10px;
+}
+
+.btn {
+    padding: 8px 16px;
+    border: none;
+    border-radius: 30px;
+    cursor: pointer;
+    font-weight: 500;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    gap: 8px;
+    text-decoration: none;
+    transition: all 0.2s;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.08);
+}
+
+.btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+}
+
+.btn:active {
+    transform: translateY(0);
+}
+
+.btn-primary {
+    background: linear-gradient(135deg, #42a5f5, #2196f3);
+    color: white;
+}
+
+.btn-primary:hover {
+    background: linear-gradient(135deg, #2196f3, #1976d2);
+}
+
+.btn-secondary {
+    background: linear-gradient(135deg, #78909c, #607d8b);
+    color: white;
+}
+
+.btn-secondary:hover {
+    background: linear-gradient(135deg, #607d8b, #455a64);
+}
+
+.btn-danger {
+    background: linear-gradient(135deg, #ef5350, #e53935);
+    color: white;
+}
+
+.btn-danger:hover {
+    background: linear-gradient(135deg, #e53935, #c62828);
+}
+
+.btn-sm {
+    padding: 6px 12px;
+    font-size: 0.9em;
+}
+
+.btn-edit {
+    background: linear-gradient(135deg, #ffca28, #ffc107);
+    color: #212529;
+}
+
+.btn-edit:hover {
+    background: linear-gradient(135deg, #ffc107, #ffb300);
+}
+
+.btn-delete {
+    background: linear-gradient(135deg, #ef5350, #e53935);
+    color: white;
+}
+
+.btn-delete:hover {
+    background: linear-gradient(135deg, #e53935, #c62828);
+}
+
+.admin-badge {
+    background: linear-gradient(135deg, #42a5f5, #2196f3);
+    color: white;
+    padding: 5px 10px;
+    border-radius: 30px;
+    font-size: 0.8em;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    box-shadow: 0 2px 5px rgba(33, 150, 243, 0.3);
+}
+
+.super-admin-badge {
+    background: linear-gradient(135deg, #ab47bc, #9c27b0);
+    color: white;
+    padding: 5px 10px;
+    border-radius: 30px;
+    font-size: 0.8em;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    box-shadow: 0 2px 5px rgba(156, 39, 176, 0.3);
+}
+
+.user-badge {
+    background: linear-gradient(135deg, #78909c, #607d8b);
+    color: white;
+    padding: 5px 10px;
+    border-radius: 30px;
+    font-size: 0.8em;
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    box-shadow: 0 2px 5px rgba(97, 97, 97, 0.3);
+}
+
+.delete-form {
+    display: inline;
+}
+
+.no-data {
+    text-align: center;
+    padding: 50px 0;
+    color: var(--text-secondary);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 15px;
+}
+
+.no-data i {
+    font-size: 60px;
+    margin-bottom: 10px;
+    opacity: 0.5;
+    color: #90a4ae;
+}
+
+.no-data p {
+    font-size: 18px;
+    margin: 0;
+}
+
+/* 模态对话框样式 */
+.modal {
+    display: none;
+    position: fixed;
+    z-index: 1000;
+    left: 0;
+    top: 0;
+    width: 100%;
+    height: 100%;
+    overflow: auto;
+    background-color: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(5px);
+    animation: fadeIn 0.3s ease;
+}
+
+@keyframes fadeIn {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+.modal-content {
+    background: white;
+    margin: 10% auto;
+    width: 400px;
+    border-radius: 12px;
+    box-shadow: 0 5px 30px rgba(0, 0, 0, 0.2);
+    animation: slideDown 0.4s ease-out;
+    overflow: hidden;
+}
+
+@keyframes slideDown {
+    from { transform: translateY(-50px); opacity: 0; }
+    to { transform: translateY(0); opacity: 1; }
+}
+
+.modal-header {
+    padding: 15px 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    border-bottom: 1px solid #eee;
+    background: #f8f9fa;
+}
+
+.modal-header h2 {
+    margin: 0;
+    font-size: 18px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    color: #e53935;
+}
+
+.modal-header i {
+    color: #e53935;
+}
+
+.close {
+    color: #aaa;
+    font-size: 24px;
+    cursor: pointer;
+    transition: color 0.2s;
+}
+
+.close:hover {
+    color: #333;
+}
+
+.modal-body {
+    padding: 20px;
+}
+
+.modal-body p {
+    margin: 0 0 10px;
+}
+
+.warning-text {
+    color: #e53935;
+    font-weight: 500;
+}
+
+.modal-footer {
+    padding: 15px 20px;
+    display: flex;
+    justify-content: flex-end;
+    gap: 10px;
+    border-top: 1px solid #eee;
+}
+
+@media (max-width: 768px) {
+    .admin-header {
+        flex-direction: column;
+        gap: 15px;
+        align-items: flex-start;
+        padding: 20px;
+    }
+    
+    .admin-content {
+        padding: 20px;
+    }
+    
+    .action-bar {
+        flex-direction: column;
+        gap: 15px;
+        align-items: flex-start;
+    }
+    
+    .search-box {
+        width: 100%;
+    }
+    
+    .search-box input {
+        width: 100%;
+    }
+    
+    .search-box input:focus {
+        width: 100%;
+    }
+    
+    .modal-content {
+        width: 90%;
+        margin: 20% auto;
+    }
+}
+</style>
+
+<script>
+function searchUsers() {
+    const input = document.getElementById('userSearch');
+    const filter = input.value.toUpperCase();
+    const table = document.getElementById('usersTable');
+    const rows = table.getElementsByTagName('tr');
+    let count = 0;
+    
+    for (let i = 1; i < rows.length; i++) {
+        const usernameCell = rows[i].getElementsByTagName('td')[1];
+        if (usernameCell) {
+            const username = usernameCell.textContent || usernameCell.innerText;
+            
+            if (username.toUpperCase().indexOf(filter) > -1) {
+                rows[i].style.display = '';
+                count++;
+                
+                // 添加高亮动画
+                rows[i].classList.add('highlight');
+                setTimeout(() => {
+                    rows[i].classList.remove('highlight');
+                }, 1000);
+            } else {
+                rows[i].style.display = 'none';
+            }
+        }
+    }
+    
+    document.getElementById('resultCount').textContent = count;
+}
+
+let currentUserId = null;
+
+function confirmDelete(event, userId) {
+    event.preventDefault();
+    currentUserId = userId;
+    document.getElementById('deleteModal').style.display = 'block';
+    return false;
+}
+
+function closeModal() {
+    document.getElementById('deleteModal').style.display = 'none';
+    currentUserId = null;
+}
+
+document.getElementById('confirmDeleteBtn').addEventListener('click', function() {
+    if (currentUserId) {
+        const form = document.querySelector(`.user-row[data-id="${currentUserId}"] .delete-form`);
+        if (form) {
+            form.submit();
+        }
+    }
+    closeModal();
+});
+
+// 点击模态框外部关闭
+window.addEventListener('click', function(event) {
+    const modal = document.getElementById('deleteModal');
+    if (event.target === modal) {
+        closeModal();
+    }
+});
+
+// 键盘按下Escape键关闭模态框
+document.addEventListener('keydown', function(event) {
+    if (event.key === 'Escape') {
+        closeModal();
+    }
+});
+
+// 添加表格行的交错效果
+document.addEventListener('DOMContentLoaded', function() {
+    const rows = document.querySelectorAll('.user-row');
+    rows.forEach((row, index) => {
+        row.style.animationDelay = `${index * 0.05}s`;
+    });
+});
+</script>
+{% endblock %} 
