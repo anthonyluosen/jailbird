@@ -14,7 +14,7 @@ process_manager = None
 
 @bp.route('/')
 @bp.route('/folder')
-# @login_required
+@login_required
 def index():
     china_tz = pytz.timezone('Asia/Shanghai')
     current_time = datetime.now(china_tz).isoformat()
@@ -104,7 +104,13 @@ def logs():
             return "非法访问路径！", 403
             
         if not os.path.exists(abs_folder_path):
-            return "路径不存在！", 404
+            # 创建日志文件夹（如果不存在）
+            try:
+                os.makedirs(abs_folder_path, exist_ok=True)
+                current_app.logger.info(f"创建日志目录: {abs_folder_path}")
+            except Exception as e:
+                current_app.logger.error(f"无法创建日志目录: {str(e)}")
+                return "无法创建日志目录！", 500
             
         # 递归获取所有日志文件
         log_files = []
@@ -121,9 +127,21 @@ def logs():
         # 按文件名排序
         log_files.sort()
         
+        # 如果没有日志文件，创建一个示例日志
+        if not log_files:
+            try:
+                example_log_path = os.path.join(abs_folder_path, 'system.log')
+                with open(example_log_path, 'w', encoding='utf-8') as f:
+                    f.write(f"系统日志初始化 - {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}\n")
+                    f.write("日志监控系统就绪\n")
+                log_files = ['system.log']
+                current_app.logger.info(f"创建示例日志文件: {example_log_path}")
+            except Exception as e:
+                current_app.logger.error(f"无法创建示例日志: {str(e)}")
+        
         current_app.logger.info(f"找到日志文件: {log_files}")
                 
-        return render_template('main/logs.html', 
+        return render_template('main/logs.html',
                              folder_path=folder_path,
                              base_folder=base_folder,
                              log_files=log_files)
@@ -133,6 +151,7 @@ def logs():
         return "访问日志失败！", 500
 
 @bp.route('/api/logs/content')
+@login_required
 def get_log_content():
     """获取日志文件内容"""
     file_path = request.args.get('path')
@@ -142,14 +161,20 @@ def get_log_content():
         return jsonify({'error': '未指定文件路径'}), 400
         
     try:
-        # 修改这里：使用 LOG_FOLDER 而不是 DATA_FOLDER
+        # 获取基础日志目录
         abs_base_folder = os.path.abspath(current_app.config['LOG_FOLDER'])
-        abs_file_path = os.path.abspath(file_path)
+        
+        # 正确处理文件路径
+        # 首先从file_path中提取文件名，避免路径遍历攻击
+        file_name = os.path.basename(file_path)
+        
+        # 构建绝对路径
+        abs_file_path = os.path.join(abs_base_folder, file_name)
         
         current_app.logger.info(f"正在读取日志文件: {abs_file_path}")
         current_app.logger.info(f"基础目录: {abs_base_folder}")
         
-        if not abs_file_path.startswith(abs_base_folder):
+        if not os.path.commonpath([abs_base_folder, abs_file_path]) == abs_base_folder:
             current_app.logger.error(f"非法访问路径: {abs_file_path}")
             return jsonify({'error': '非法访问路径'}), 403
             
@@ -181,7 +206,7 @@ def get_log_content():
         
     except Exception as e:
         current_app.logger.error(f"读取日志失败: {str(e)}")
-        return jsonify({'error': str(e)}), 500 
+        return jsonify({'error': str(e)}), 500
 
 @bp.route('/process/start', methods=['POST'])
 @login_required

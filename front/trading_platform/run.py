@@ -5,14 +5,13 @@ import sys
 project_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, project_dir)
 
-from trading_platform.app import create_app
+from app import create_app
 
 app = create_app()
 
 if __name__ == '__main__':
     app.run(
-        host='0.0.0.0', 
-        port=8000, 
+        port=8000,
         debug=True,
         use_reloader=False  # 禁用重载器
     ) 

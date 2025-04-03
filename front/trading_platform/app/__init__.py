@@ -1,7 +1,7 @@
-from flask import Flask
+from flask import Flask, redirect, url_for, request
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
-from flask_login import LoginManager
+from flask_login import LoginManager, current_user
 from app.config import Config
 import os
 from dotenv import load_dotenv
@@ -14,7 +14,7 @@ db = SQLAlchemy()
 migrate = Migrate()
 login = LoginManager()
 login.login_view = 'auth.login'
-login.login_message = '请先登录'
+login.login_message = '请先登录后再访问此页面'
 
 def create_app(config_class=Config):
     app = Flask(__name__)
@@ -62,5 +62,16 @@ def create_app(config_class=Config):
 
     # 初始化配置
     config_class.init_app(app)
+
+    # 添加全局路由保护
+    @app.before_request
+    def require_login():
+        # 允许访问静态文件和登录/注册相关路由
+        allowed_routes = ['auth.login', 'auth.logout', 'static']
+        if not current_user.is_authenticated and \
+           request.endpoint and \
+           request.endpoint not in allowed_routes and \
+           not request.endpoint.startswith('auth.'):
+            return redirect(url_for('auth.login'))
 
     return app 

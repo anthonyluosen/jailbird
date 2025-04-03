@@ -4,6 +4,17 @@
 <div class="login-container">
     <div class="login-box">
         <h1>登录</h1>
+        
+        {% with messages = get_flashed_messages() %}
+        {% if messages %}
+            <div class="alert alert-danger">
+                {% for message in messages %}
+                    {{ message }}
+                {% endfor %}
+            </div>
+        {% endif %}
+        {% endwith %}
+        
         <form action="" method="post" novalidate>
             {{ form.hidden_tag() }}
             <div class="form-group">
@@ -65,6 +76,19 @@
     font-size: 12px;
     margin-top: 5px;
     display: block;
+}
+
+.alert {
+    padding: 12px 15px;
+    margin-bottom: 20px;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.alert-danger {
+    background-color: #f8d7da;
+    border: 1px solid #f5c6cb;
+    color: #721c24;
 }
 
 .btn-primary {

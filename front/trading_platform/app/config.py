@@ -8,11 +8,11 @@ class Config:
     SQLALCHEMY_DATABASE_URI = os.environ.get('DATABASE_URL') or \
         'sqlite:///' + os.path.join(basedir, 'data', 'app.db')
     SQLALCHEMY_TRACK_MODIFICATIONS = False
-    DATA_FOLDER = os.environ.get('DATA_PATH') or r'E:\quant\code\thisday'
+    DATA_FOLDER = os.environ.get('DATA_PATH') or r'..\logs\thisday'
     PERMANENT_SESSION_LIFETIME = timedelta(days=31) 
     
     # 日志目录配置
-    LOG_FOLDER = r"E:\quant\code\recycle\logs"
+    LOG_FOLDER = r"app\logs"
     
     @staticmethod
     def init_app(app):
