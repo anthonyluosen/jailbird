@@ -1,0 +1,162 @@
+{
+    "total_assets": 89955.914,
+    "cash": 1382.913,
+    "market_value": 88573.00000000001,
+    "frozen_cash": 9904.503,
+    "positions": {
+        "159552": {
+            "volume": 6700,
+            "cost": 10043.300000000001,
+            "trade_price": 1.499,
+            "security_type": "ETF",
+            "unsellable_qty": 0,
+            "sellable_qty": 6700,
+            "latest_price": 1.56,
+            "market_value": 10452.0
+        },
+        "159536": {
+            "volume": 8900,
+            "cost": 10021.4,
+            "trade_price": 1.126,
+            "security_type": "ETF",
+            "unsellable_qty": 0,
+            "sellable_qty": 8900,
+            "latest_price": 1.102,
+            "market_value": 9807.800000000001
+        },
+        "159641": {
+            "volume": 12500,
+            "cost": 9987.5,
+            "trade_price": 0.799,
+            "security_type": "ETF",
+            "unsellable_qty": 0,
+            "sellable_qty": 12500,
+            "latest_price": 0.8130000000000001,
+            "market_value": 10162.5
+        },
+        "562360": {
+            "volume": 10400,
+            "cost": 10171.199999999999,
+            "trade_price": 0.9779999999999999,
+            "security_type": "STOCK",
+            "unsellable_qty": 0,
+            "sellable_qty": 10400
+        },
+        "159881": {
+            "volume": 9400,
+            "cost": 9888.800000000001,
+            "trade_price": 1.052,
+            "security_type": "ETF",
+            "unsellable_qty": 0,
+            "sellable_qty": 9400,
+            "latest_price": 1.049,
+            "market_value": 9860.599999999999
+        },
+        "588180": {
+            "volume": 15200,
+            "cost": 10032.0,
+            "trade_price": 0.66,
+            "security_type": "STOCK",
+            "unsellable_qty": 0,
+            "sellable_qty": 15200
+        },
+        "561550": {
+            "volume": 10500,
+            "cost": 10017.0,
+            "trade_price": 0.954,
+            "security_type": "STOCK",
+            "unsellable_qty": 0,
+            "sellable_qty": 10500
+        },
+        "561330": {
+            "volume": 9700,
+            "cost": 9942.5,
+            "trade_price": 1.025,
+            "security_type": "STOCK",
+            "unsellable_qty": 0,
+            "sellable_qty": 9700
+        },
+        "159858": {
+            "volume": 1600,
+            "cost": 940.8,
+            "trade_price": 0.588,
+            "security_type": "ETF",
+            "unsellable_qty": 0,
+            "sellable_qty": 1600,
+            "latest_price": 0.587,
+            "market_value": 939.1999999999999
+        },
+        "159695": {
+            "volume": 800,
+            "cost": 911.2,
+            "trade_price": 1.139,
+            "security_type": "ETF",
+            "unsellable_qty": 0,
+            "sellable_qty": 800,
+            "latest_price": 1.142,
+            "market_value": 913.5999999999999
+        },
+        "159657": {
+            "volume": 1500,
+            "cost": 948.0,
+            "trade_price": 0.632,
+            "security_type": "ETF",
+            "unsellable_qty": 0,
+            "sellable_qty": 1500,
+            "latest_price": 0.626,
+            "market_value": 939.0
+        },
+        "560500": {
+            "volume": 1000,
+            "cost": 950.0,
+            "trade_price": 0.95,
+            "security_type": "STOCK",
+            "unsellable_qty": 0,
+            "sellable_qty": 1000
+        },
+        "588900": {
+            "volume": 1000,
+            "cost": 981.0,
+            "trade_price": 0.981,
+            "security_type": "STOCK",
+            "unsellable_qty": 0,
+            "sellable_qty": 1000
+        },
+        "560360": {
+            "volume": 700,
+            "cost": 968.8,
+            "trade_price": 1.384,
+            "security_type": "STOCK",
+            "unsellable_qty": 0,
+            "sellable_qty": 700
+        },
+        "560280": {
+            "volume": 700,
+            "cost": 904.4,
+            "trade_price": 1.292,
+            "security_type": "STOCK",
+            "unsellable_qty": 0,
+            "sellable_qty": 700
+        },
+        "560780": {
+            "volume": 800,
+            "cost": 888.8,
+            "trade_price": 1.111,
+            "security_type": "STOCK",
+            "unsellable_qty": 0,
+            "sellable_qty": 800
+        },
+        "517350": {
+            "volume": 1300,
+            "cost": 976.3,
+            "trade_price": 0.751,
+            "security_type": "STOCK",
+            "unsellable_qty": 0,
+            "sellable_qty": 1300
+        }
+    },
+    "last_update": "2025-04-02T14:40:36.488871",
+    "trader_platform": "qmt",
+    "initial_capital": 100000.0,
+    "fees": 139.58648
+}

@@ -66,11 +66,14 @@ def create_app(config_class=Config):
     # 添加全局路由保护
     @app.before_request
     def require_login():
-        # 允许访问静态文件和登录/注册相关路由
+        # 允许访问静态文件和登录/注册相关路由，以及外部订单API
         allowed_routes = ['auth.login', 'auth.logout', 'static']
+        allowed_endpoints = ['oms.receive_external_orders']  # 允许外部订单API无需登录
+        
         if not current_user.is_authenticated and \
            request.endpoint and \
            request.endpoint not in allowed_routes and \
+           request.endpoint not in allowed_endpoints and \
            not request.endpoint.startswith('auth.'):
             return redirect(url_for('auth.login'))
 

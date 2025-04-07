@@ -1,0 +1,699 @@
+{% extends "base.html" %}
+
+{% block title %}交易绩效分析{% endblock %}
+
+{% block styles %}
+{{ super() }}
+<style>
+    .strategy-selector {
+        margin-bottom: 20px;
+    }
+    .chart-container {
+        height: 400px;
+        margin-bottom: 30px;
+    }
+    .positions-table {
+        margin-top: 30px;
+    }
+    .card {
+        margin-bottom: 20px;
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+    }
+    .metric-card {
+        text-align: center;
+        padding: 15px;
+    }
+    .metric-value {
+        font-size: 24px;
+        font-weight: bold;
+    }
+    .metric-title {
+        font-size: 14px;
+        color: #666;
+    }
+    .positive {
+        color: #28a745;
+    }
+    .negative {
+        color: #dc3545;
+    }
+    .tab-content {
+        padding-top: 20px;
+    }
+    .nav-tabs {
+        margin-bottom: 20px;
+    }
+    .indicator-card {
+        padding: 15px;
+        margin-bottom: 20px;
+        border-radius: 5px;
+    }
+    .indicator-title {
+        font-size: 14px;
+        color: #666;
+        margin-bottom: 5px;
+    }
+    .indicator-value {
+        font-size: 20px;
+        font-weight: bold;
+    }
+    .strategy-name {
+        margin-bottom: 20px;
+        font-size: 18px;
+        font-weight: bold;
+        color: #333;
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="container-fluid mt-4">
+    <!-- 选项卡导航 -->
+    <ul class="nav nav-tabs" id="performanceTabs" role="tablist">
+        <li class="nav-item">
+            <a class="nav-link active" id="real-tab" data-toggle="tab" href="#real" role="tab">实盘数据</a>
+        </li>
+        <li class="nav-item">
+            <a class="nav-link" id="backtest-tab" data-toggle="tab" href="#backtest" role="tab">回测数据</a>
+        </li>
+    </ul>
+    
+    <!-- 选项卡内容 -->
+    <div class="tab-content" id="performanceTabContent">
+        <!-- 实盘数据选项卡 -->
+        <div class="tab-pane fade show active" id="real" role="tabpanel" aria-labelledby="real-tab">
+            <!-- 策略选择器 -->
+            <div class="card strategy-selector">
+                <div class="card-body">
+                    <form method="get" action="{{ url_for('main.trading_performance') }}" class="form-inline">
+                        <div class="form-group mr-3">
+                            <label for="strategy" class="mr-2">选择策略:</label>
+                            <select name="strategy" id="strategy" class="form-control" onchange="this.form.submit()">
+                                {% for strategy in strategies %}
+                                <option value="{{ strategy }}" {% if strategy == selected_strategy %}selected{% endif %}>{{ strategy }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            {% if selected_strategy %}
+            <div class="strategy-name">当前策略: {{ selected_strategy }}</div>
+            {% endif %}
+            
+            <!-- 主要指标卡片 -->
+            {% if performance_series and performance_series|length > 0 %}
+            <div class="row">
+                <div class="col-md-3">
+                    <div class="card metric-card">
+                        <div class="metric-value">{{ "%.2f"|format(performance_series[-1].total_assets) }}</div>
+                        <div class="metric-title">总资产</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card metric-card">
+                        <div class="metric-value {% if performance_series[-1].returns > 0 %}positive{% else %}negative{% endif %}">
+                            {{ "%.2f"|format(performance_series[-1].returns) }}%
+                        </div>
+                        <div class="metric-title">累计收益率</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card metric-card">
+                        <div class="metric-value">{{ "%.2f"|format(performance_series[-1].cash) }}</div>
+                        <div class="metric-title">可用资金</div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card metric-card">
+                        <div class="metric-value">{{ "%.2f"|format(performance_series[-1].fees) }}</div>
+                        <div class="metric-title">累计手续费</div>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="alert alert-warning">
+                没有找到性能数据。请确保选择了正确的策略，并且有历史数据可用。
+            </div>
+            {% endif %}
+            
+            <!-- 净值曲线图 -->
+            <div class="card">
+                <div class="card-header">
+                    <h5>净值曲线</h5>
+                </div>
+                <div class="card-body">
+                    <div id="performanceChart" class="chart-container"></div>
+                </div>
+            </div>
+            
+            <!-- 持仓信息 -->
+            <div class="card positions-table">
+                <div class="card-header">
+                    <h5>当前持仓</h5>
+                </div>
+                <div class="card-body">
+                    <table class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>证券代码</th>
+                                <th>持仓数量</th>
+                                <th>可卖数量</th>
+                                <th>成本价</th>
+                                <th>最新价</th>
+                                <th>市值</th>
+                                <th>盈亏</th>
+                                <th>盈亏比例</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% if positions %}
+                                {% for code, pos in positions.items() %}
+                                <tr>
+                                    <td>{{ code }}</td>
+                                    <td>{{ pos.volume }}</td>
+                                    <td>{{ pos.sellable_qty }}</td>
+                                    <td>{{ "%.4f"|format(pos.cost / pos.volume if pos.volume else 0) }}</td>
+                                    <td>{{ "%.4f"|format(pos.latest_price) if pos.latest_price else '-' }}</td>
+                                    <td>{{ "%.2f"|format(pos.market_value) if pos.market_value else '-' }}</td>
+                                    {% set profit = pos.market_value - pos.cost if pos.market_value else 0 %}
+                                    <td class="{% if profit > 0 %}positive{% elif profit < 0 %}negative{% endif %}">
+                                        {{ "%.2f"|format(profit) if pos.market_value else '-' }}
+                                    </td>
+                                    {% set profit_pct = (pos.market_value / pos.cost - 1) * 100 if pos.market_value and pos.cost else 0 %}
+                                    <td class="{% if profit_pct > 0 %}positive{% elif profit_pct < 0 %}negative{% endif %}">
+                                        {{ "%.2f"|format(profit_pct) if pos.market_value and pos.cost else '-' }}%
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            {% else %}
+                                <tr>
+                                    <td colspan="8" class="text-center">无持仓数据</td>
+                                </tr>
+                            {% endif %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 回测数据选项卡 -->
+        <div class="tab-pane fade" id="backtest" role="tabpanel" aria-labelledby="backtest-tab">
+            <!-- 回测策略选择器 -->
+            <div class="card strategy-selector">
+                <div class="card-body">
+                    <form method="get" action="{{ url_for('main.trading_performance') }}" class="form-inline">
+                        <input type="hidden" name="tab" value="backtest">
+                        <div class="form-group mr-3">
+                            <label for="backtest_strategy" class="mr-2">选择回测策略:</label>
+                            <select name="backtest_strategy" id="backtest_strategy" class="form-control" onchange="this.form.submit()">
+                                {% for strategy in backtest_strategies %}
+                                <option value="{{ strategy }}" {% if strategy == selected_backtest_strategy %}selected{% endif %}>{{ strategy }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </form>
+                </div>
+            </div>
+            
+            {% if selected_backtest_strategy %}
+            <div class="strategy-name">当前回测策略: {{ selected_backtest_strategy }}</div>
+            {% endif %}
+            
+            <!-- 回测策略列表展示 -->
+            {% if backtest_strategies and backtest_strategies|length > 0 %}
+            <div class="card mb-4">
+                <div class="card-header">
+                    <h5>回测策略列表 (共 {{ backtest_strategies|length }} 个)</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row">
+                        {% for strategy in backtest_strategies %}
+                        <div class="col-md-3 mb-2">
+                            <a href="{{ url_for('main.trading_performance', tab='backtest', backtest_strategy=strategy) }}" 
+                               class="btn btn-outline-primary {% if strategy == selected_backtest_strategy %}active{% endif %} w-100">
+                                {{ strategy }}
+                            </a>
+                        </div>
+                        {% endfor %}
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+            
+            <!-- 回测关键指标 -->
+            {% if backtest_metrics %}
+            <div class="row">
+                <div class="col-md-3">
+                    <div class="card indicator-card">
+                        <div class="indicator-title">累计收益率</div>
+                        <div class="indicator-value {% if backtest_metrics.total_return > 0 %}positive{% else %}negative{% endif %}">
+                            {{ "%.2f"|format(backtest_metrics.total_return) }}%
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card indicator-card">
+                        <div class="indicator-title">年化收益率</div>
+                        <div class="indicator-value {% if backtest_metrics.annual_return > 0 %}positive{% else %}negative{% endif %}">
+                            {{ "%.2f"|format(backtest_metrics.annual_return) }}%
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card indicator-card">
+                        <div class="indicator-title">最大回撤</div>
+                        <div class="indicator-value negative">
+                            {{ "%.2f"|format(backtest_metrics.max_drawdown) }}%
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card indicator-card">
+                        <div class="indicator-title">夏普比率</div>
+                        <div class="indicator-value {% if backtest_metrics.sharpe_ratio > 0 %}positive{% else %}negative{% endif %}">
+                            {{ "%.2f"|format(backtest_metrics.sharpe_ratio) }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="row">
+                <div class="col-md-3">
+                    <div class="card indicator-card">
+                        <div class="indicator-title">波动率</div>
+                        <div class="indicator-value">
+                            {{ "%.2f"|format(backtest_metrics.volatility) }}%
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card indicator-card">
+                        <div class="indicator-title">胜率</div>
+                        <div class="indicator-value {% if backtest_metrics.win_ratio > 50 %}positive{% else %}negative{% endif %}">
+                            {{ "%.2f"|format(backtest_metrics.win_ratio) }}%
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card indicator-card">
+                        <div class="indicator-title">卡尔马比率</div>
+                        <div class="indicator-value {% if backtest_metrics.annual_return > 0 and backtest_metrics.max_drawdown > 0 %}
+                            {% if backtest_metrics.annual_return / backtest_metrics.max_drawdown > 0 %}positive{% else %}negative{% endif %}
+                        {% endif %}">
+                            {{ "%.2f"|format(backtest_metrics.annual_return / backtest_metrics.max_drawdown) if backtest_metrics.max_drawdown > 0 else 'N/A' }}
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="alert alert-warning">
+                没有找到回测数据。请确保选择了正确的策略，并且回测数据可用。
+            </div>
+            {% endif %}
+            
+            <!-- 回测净值曲线图 -->
+            <div class="card">
+                <div class="card-header">
+                    <h5>净值曲线</h5>
+                </div>
+                <div class="card-body">
+                    <div id="backtestChart" class="chart-container"></div>
+                </div>
+            </div>
+            
+            <!-- 回撤曲线图 -->
+            <div class="card">
+                <div class="card-header">
+                    <h5>回撤分析</h5>
+                </div>
+                <div class="card-body">
+                    <div id="drawdownChart" class="chart-container"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block scripts %}
+{{ super() }}
+<script src="https://cdn.jsdelivr.net/npm/echarts@5.4.2/dist/echarts.min.js"></script>
+<script>
+    // 将Jinja模板中的数据转为JS变量
+    var performanceSeriesData = JSON.parse('{{ performance_series|tojson|safe }}');
+    var backtestDataJson = JSON.parse('{{ backtest_data|tojson|safe }}');
+    
+    // 初始化图表
+    document.addEventListener('DOMContentLoaded', function() {
+        // 实盘净值图表
+        if (performanceSeriesData && performanceSeriesData.length > 0) {
+            var dates = performanceSeriesData.map(function(item) { return item.date; });
+            var totalAssets = performanceSeriesData.map(function(item) { return item.total_assets; });
+            var returns = performanceSeriesData.map(function(item) { return item.returns; });
+            
+            // 净值曲线图表
+            var performanceChart = echarts.init(document.getElementById('performanceChart'));
+            
+            var option = {
+                tooltip: {
+                    trigger: 'axis',
+                    axisPointer: {
+                        type: 'cross',
+                        label: {
+                            backgroundColor: '#6a7985'
+                        }
+                    }
+                },
+                legend: {
+                    data: ['总资产', '收益率(%)']
+                },
+                grid: {
+                    left: '3%',
+                    right: '4%',
+                    bottom: '3%',
+                    containLabel: true
+                },
+                xAxis: {
+                    type: 'category',
+                    boundaryGap: false,
+                    data: dates
+                },
+                yAxis: [
+                    {
+                        type: 'value',
+                        name: '总资产',
+                        position: 'left'
+                    },
+                    {
+                        type: 'value',
+                        name: '收益率(%)',
+                        position: 'right',
+                        axisLabel: {
+                            formatter: '{value}%'
+                        }
+                    }
+                ],
+                series: [
+                    {
+                        name: '总资产',
+                        type: 'line',
+                        areaStyle: {},
+                        emphasis: {
+                            focus: 'series'
+                        },
+                        data: totalAssets
+                    },
+                    {
+                        name: '收益率(%)',
+                        type: 'line',
+                        yAxisIndex: 1,
+                        emphasis: {
+                            focus: 'series'
+                        },
+                        data: returns
+                    }
+                ]
+            };
+            
+            performanceChart.setOption(option);
+            
+            // 窗口大小变化时重新调整图表大小
+            window.addEventListener('resize', function() {
+                performanceChart.resize();
+            });
+        } else {
+            // 如果没有数据，显示一个提示信息
+            document.getElementById('performanceChart').innerHTML = '<div class="text-center p-5 text-muted">没有足够的数据来绘制图表</div>';
+        }
+        
+        // 回测净值图表
+        var backtestChart, drawdownChart;
+        
+        if (backtestDataJson && backtestDataJson.dates && backtestDataJson.dates.length > 0) {
+            // 净值曲线图表
+            backtestChart = echarts.init(document.getElementById('backtestChart'));
+            
+            var backtestOption = {
+                tooltip: {
+                    trigger: 'axis',
+                    axisPointer: {
+                        type: 'cross',
+                        label: {
+                            backgroundColor: '#6a7985'
+                        }
+                    },
+                    formatter: function(params) {
+                        var date = params[0].axisValue;
+                        var html = date + '<br/>';
+                        
+                        for (var i = 0; i < params.length; i++) {
+                            var param = params[i];
+                            var color = param.color;
+                            var seriesName = param.seriesName;
+                            var value = param.value;
+                            
+                            if (seriesName === '净值') {
+                                value = value.toFixed(4);
+                            } else if (seriesName === '收益率') {
+                                value = (value * 100).toFixed(2) + '%';
+                            } else if (seriesName === '回撤') {
+                                value = (value).toFixed(2) + '%';
+                            }
+                            
+                            html += '<span style="display:inline-block;margin-right:5px;border-radius:10px;width:10px;height:10px;background-color:' + color + '"></span>';
+                            html += seriesName + ': ' + value + '<br/>';
+                        }
+                        
+                        return html;
+                    }
+                },
+                legend: {
+                    data: ['净值', '收益率']
+                },
+                grid: {
+                    left: '3%',
+                    right: '4%',
+                    bottom: '3%',
+                    containLabel: true
+                },
+                xAxis: {
+                    type: 'category',
+                    boundaryGap: false,
+                    data: backtestDataJson.dates,
+                    axisLabel: {
+                        rotate: 45,
+                        interval: function(index, value) {
+                            // 如果数据点超过100个，则更改显示间隔
+                            var interval = Math.ceil(backtestDataJson.dates.length / 20);
+                            return index % interval === 0;
+                        }
+                    }
+                },
+                yAxis: [
+                    {
+                        type: 'value',
+                        name: '净值',
+                        position: 'left'
+                    },
+                    {
+                        type: 'value',
+                        name: '收益率',
+                        position: 'right',
+                        axisLabel: {
+                            formatter: '{value}%'
+                        }
+                    }
+                ],
+                dataZoom: [
+                    {
+                        type: 'inside',
+                        start: 0,
+                        end: 100,
+                        zoomLock: false,
+                        throttle: 100
+                    },
+                    {
+                        type: 'slider',
+                        start: 0,
+                        end: 100
+                    }
+                ],
+                animation: false,  // 关闭动画以提高性能
+                series: [
+                    {
+                        name: '净值',
+                        type: 'line',
+                        areaStyle: {
+                            opacity: 0.3
+                        },
+                        emphasis: {
+                            focus: 'series'
+                        },
+                        data: backtestDataJson.net_values,
+                        smooth: true,
+                        symbol: 'none',
+                        sampling: 'lttb'
+                    },
+                    {
+                        name: '收益率',
+                        type: 'line',
+                        yAxisIndex: 1,
+                        emphasis: {
+                            focus: 'series'
+                        },
+                        data: backtestDataJson.returns.map(function(item) { return item * 100; }),
+                        smooth: true,
+                        symbol: 'none',
+                        sampling: 'lttb'
+                    }
+                ]
+            };
+            
+            backtestChart.setOption(backtestOption);
+            
+            // 回撤曲线图表
+            drawdownChart = echarts.init(document.getElementById('drawdownChart'));
+            
+            var drawdownOption = {
+                tooltip: {
+                    trigger: 'axis',
+                    axisPointer: {
+                        type: 'cross',
+                        label: {
+                            backgroundColor: '#6a7985'
+                        }
+                    },
+                    formatter: function(params) {
+                        var date = params[0].axisValue;
+                        var html = date + '<br/>';
+                        
+                        for (var i = 0; i < params.length; i++) {
+                            var param = params[i];
+                            var color = param.color;
+                            var seriesName = param.seriesName;
+                            var value = param.value;
+                            
+                            if (seriesName === '回撤') {
+                                value = (value).toFixed(2) + '%';
+                            }
+                            
+                            html += '<span style="display:inline-block;margin-right:5px;border-radius:10px;width:10px;height:10px;background-color:' + color + '"></span>';
+                            html += seriesName + ': ' + value + '<br/>';
+                        }
+                        
+                        return html;
+                    }
+                },
+                legend: {
+                    data: ['回撤']
+                },
+                grid: {
+                    left: '3%',
+                    right: '4%',
+                    bottom: '3%',
+                    containLabel: true
+                },
+                xAxis: {
+                    type: 'category',
+                    boundaryGap: false,
+                    data: backtestDataJson.dates,
+                    axisLabel: {
+                        rotate: 45,
+                        interval: function(index, value) {
+                            // 如果数据点超过100个，则更改显示间隔
+                            var interval = Math.ceil(backtestDataJson.dates.length / 20);
+                            return index % interval === 0;
+                        }
+                    }
+                },
+                yAxis: {
+                    type: 'value',
+                    name: '回撤',
+                    position: 'left',
+                    axisLabel: {
+                        formatter: '{value}%'
+                    },
+                    inverse: true
+                },
+                dataZoom: [
+                    {
+                        type: 'inside',
+                        start: 0,
+                        end: 100,
+                        zoomLock: false,
+                        throttle: 100
+                    },
+                    {
+                        type: 'slider',
+                        start: 0,
+                        end: 100
+                    }
+                ],
+                animation: false,  // 关闭动画以提高性能
+                series: [
+                    {
+                        name: '回撤',
+                        type: 'line',
+                        areaStyle: {
+                            color: '#d48265',
+                            opacity: 0.5
+                        },
+                        emphasis: {
+                            focus: 'series'
+                        },
+                        data: backtestDataJson.drawdowns.map(function(item) { return item * 100; }),
+                        smooth: true,
+                        lineStyle: {
+                            color: '#d48265'
+                        },
+                        itemStyle: {
+                            color: '#d48265'
+                        },
+                        symbol: 'none',
+                        sampling: 'lttb'
+                    }
+                ],
+                visualMap: {
+                    show: false,
+                    dimension: 1,
+                    pieces: [{
+                        gt: 0,
+                        lte: 100,
+                        color: '#d48265'
+                    }]
+                }
+            };
+            
+            drawdownChart.setOption(drawdownOption);
+            
+            // 窗口大小变化时重新调整图表大小
+            window.addEventListener('resize', function() {
+                backtestChart.resize();
+                drawdownChart.resize();
+            });
+        } else {
+            // 如果没有数据，显示一个提示信息
+            document.getElementById('backtestChart').innerHTML = '<div class="text-center p-5 text-muted">没有足够的数据来绘制图表</div>';
+            document.getElementById('drawdownChart').innerHTML = '<div class="text-center p-5 text-muted">没有足够的数据来绘制图表</div>';
+        }
+        
+        // 处理标签页切换时重新渲染图表
+        $('a[data-toggle="tab"]').on('shown.bs.tab', function (e) {
+            if (e.target.id === 'backtest-tab' && backtestChart && drawdownChart) {
+                backtestChart.resize();
+                drawdownChart.resize();
+            } else if (e.target.id === 'real-tab' && performanceChart) {
+                performanceChart.resize();
+            }
+        });
+        
+        // 检查URL参数中是否有tab，如果有则激活对应的标签
+        var urlParams = new URLSearchParams(window.location.search);
+        var tabParam = urlParams.get('tab');
+        if (tabParam === 'backtest') {
+            $('#backtest-tab').tab('show');
+        }
+    });
+</script>
+{% endblock %} 

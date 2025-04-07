@@ -1,0 +1,23 @@
+{
+    "total_assets": 85903.617,
+    "cash": 80303.617,
+    "market_value": 5600.0,
+    "frozen_cash": 0.0,
+    "positions": {
+        "518880": {
+            "volume": 2800,
+            "cost": 19695.2,
+            "trade_price": 7.034000000000001,
+            "security_type": "ETF",
+            "unsellable_qty": 0,
+            "sellable_qty": 2800,
+            "latest_price": 2.0,
+            "market_value": 5600.0
+        }
+    },
+    "last_update": "2025-04-02T14:40:36.435334",
+    "trader_platform": "qmt",
+    "initial_capital": 100000.0,
+    "fees": 1.181712,
+    "snapshot_date": "2025-04-02"
+}

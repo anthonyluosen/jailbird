@@ -3,7 +3,9 @@
 <head>
     <title>{% block title %}{% endblock %}</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
-    {% block styles %}{% endblock %}
+    {% block styles %}
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/css/bootstrap.min.css">
+    {% endblock %}
 </head>
 <body>
     <nav class="navbar">
@@ -15,6 +17,9 @@
             </a>
             <a href="{{ url_for('main.logs') }}" class="nav-link">
                 <i class="fas fa-file-alt"></i> 日志监控
+            </a>
+            <a href="{{ url_for('main.trading_performance') }}" class="nav-link">
+                <i class="fas fa-chart-line"></i> 交易绩效
             </a>
             <a href="{{ url_for('auth.logout') }}" class="nav-link">
                 <i class="fas fa-sign-out-alt"></i> 退出
@@ -45,26 +50,48 @@
     {% endwith %}
     
     {% block content %}{% endblock %}
-    {% block scripts %}{% endblock %}
+    {% block scripts %}
+    <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@4.6.0/dist/js/bootstrap.bundle.min.js"></script>
+    {% endblock %}
 
     <style>
     :root {
-        --primary-color: #2196F3;
-        --secondary-color: #607D8B;
-        --success-color: #4CAF50;
-        --error-color: #f44336;
-        --background-color: #f5f5f5;
-        --panel-background: #ffffff;
-        --border-color: #e0e0e0;
-        --text-color: #333333;
-        --text-secondary: #666666;
+        --primary-color: #3A5379; /* 深蓝色，类似图片背景 */
+        --secondary-color: #6A8CA8; /* 中蓝色，从图片提取 */
+        --success-color: #5D9D78; /* 青绿色 */
+        --error-color: #C14545; /* 红色 */
+        --background-color: #F0F1EC; /* 米白色，类似宇航服 */
+        --panel-background: rgba(255, 255, 255, 0.85); /* 半透明白色 */
+        --border-color: #D9D9D1; /* 浅灰白色边框 */
+        --text-color: #333333; /* 近黑色文字 */
+        --text-secondary: #667380; /* 灰蓝色次要文字 */
+        --accent-color: #CC5C29; /* 橙红色点缀，来自NASA徽章 */
     }
 
     body {
         margin: 0;
         padding: 0;
-        font-family: Arial, sans-serif;
+        font-family: "Roboto", Arial, sans-serif;
         background: var(--background-color);
+        position: relative;
+        min-height: 100vh;
+    }
+
+    body::before {
+        content: "";
+        position: fixed;
+        top: 50%;
+        left: 50%;
+        width: 100%;
+        height: 100%;
+        background-image: url("{{ url_for('static', filename='images/main-page.jpg') }}");
+        background-size: 70%;
+        background-position: center;
+        background-repeat: no-repeat;
+        opacity: 0.25;
+        z-index: -1;
+        transform: translate(-50%, -50%);
     }
 
     .navbar {
@@ -74,17 +101,38 @@
         justify-content: space-between;
         align-items: center;
         color: white;
-        box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .navbar::before {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 0;
+        right: 0;
+        height: 2px;
+        background: linear-gradient(90deg, var(--accent-color), transparent);
     }
 
     .nav-brand {
-        font-size: 1.2em;
+        font-size: 1.3em;
         font-weight: bold;
+        letter-spacing: 0.5px;
+        display: flex;
+        align-items: center;
+    }
+    
+    .nav-brand::before {
+        content: "🌟";
+        margin-right: 8px;
+        font-size: 0.9em;
     }
 
     .nav-links {
         display: flex;
-        gap: 20px;
+        gap: 25px;
     }
 
     .nav-link {
@@ -95,15 +143,24 @@
         display: flex;
         align-items: center;
         gap: 8px;
-        transition: background-color 0.3s;
+        transition: all 0.25s;
     }
 
     .nav-link:hover {
-        background: rgba(255,255,255,0.2);
+        background: rgba(255,255,255,0.15);
+        transform: translateY(-2px);
     }
 
     .nav-link i {
         font-size: 1.1em;
+        color: rgba(255,255,255,0.85);
+    }
+
+    .nav-user {
+        color: white;
+        padding: 6px 12px;
+        background-color: rgba(0,0,0,0.15);
+        border-radius: 4px;
     }
 
     .flash-messages {
@@ -111,12 +168,133 @@
     }
 
     .flash-message {
-        padding: 10px;
+        padding: 12px 16px;
         margin: 5px 0;
         border-radius: 4px;
-        background: #fff3cd;
-        color: #856404;
-        border: 1px solid #ffeeba;
+        background: #E7EDF5;
+        color: var(--primary-color);
+        border-left: 3px solid var(--primary-color);
+    }
+
+    /* 主页欢迎区样式 */
+    .welcome-container {
+        max-width: 1200px;
+        margin: 40px auto;
+        padding: 30px;
+        background: var(--panel-background);
+        border-radius: 8px;
+        box-shadow: 0 4px 12px rgba(0,0,0,0.15), 0 0 25px rgba(58, 83, 121, 0.1);
+        text-align: center;
+        backdrop-filter: blur(5px);
+        position: relative;
+        overflow: hidden;
+    }
+    
+    .welcome-container::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        right: 0;
+        width: 150px;
+        height: 150px;
+        background-image: url("{{ url_for('static', filename='images/main-page.jpg') }}");
+        background-size: cover;
+        background-position: center;
+        opacity: 0.05;
+        border-radius: 0 0 0 100%;
+        z-index: -1;
+    }
+
+    .welcome-title {
+        font-size: 2.2em;
+        color: var(--primary-color);
+        margin-bottom: 20px;
+    }
+
+    .welcome-subtitle {
+        font-size: 1.2em;
+        color: var(--text-secondary);
+        margin-bottom: 30px;
+        font-weight: normal;
+    }
+
+    .feature-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+        gap: 25px;
+        margin-top: 40px;
+    }
+
+    .feature-card {
+        padding: 25px;
+        background: rgba(248, 249, 252, 0.7);
+        border-radius: 6px;
+        text-align: center;
+        transition: transform 0.3s, box-shadow 0.3s;
+        backdrop-filter: blur(3px);
+        border: 1px solid rgba(218, 220, 224, 0.5);
+    }
+
+    .feature-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 10px 20px rgba(0,0,0,0.1);
+        border-color: rgba(204, 92, 41, 0.3);
+    }
+
+    .feature-icon {
+        font-size: 2.5em;
+        color: var(--secondary-color);
+        margin-bottom: 15px;
+    }
+
+    .feature-title {
+        font-size: 1.3em;
+        color: var(--primary-color);
+        margin-bottom: 10px;
+    }
+
+    .feature-description {
+        color: var(--text-secondary);
+        line-height: 1.5;
+    }
+
+    .nav-button {
+        display: inline-block;
+        margin-top: 30px;
+        padding: 12px 25px;
+        background: var(--primary-color);
+        color: white;
+        border-radius: 4px;
+        text-decoration: none;
+        font-weight: bold;
+        transition: all 0.3s;
+        border: none;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .nav-button::after {
+        content: "";
+        position: absolute;
+        top: -50%;
+        left: -50%;
+        width: 200%;
+        height: 200%;
+        background: rgba(255, 255, 255, 0.1);
+        transform: rotate(30deg);
+        transition: transform 0.3s;
+    }
+
+    .nav-button:hover {
+        background: var(--secondary-color);
+        transform: translateY(-2px);
+        box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        color: white;
+        text-decoration: none;
+    }
+    
+    .nav-button:hover::after {
+        transform: rotate(30deg) translateY(-30%);
     }
     </style>
 </body>
