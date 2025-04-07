@@ -82,85 +82,88 @@ def get_orders():
         print(f"获取订单失败: {e}{traceback.format_exc()}")
         return jsonify([])
 
-@bp.route('/api/external-orders', methods=['POST'])
-def receive_external_orders():
-    """接收外部订单数据并保存到数据库"""
+@bp.route('/api/order-add', methods=['POST'])
+def add_orders():
+    """添加订单
+    入参：
+    {
+        "order_id": 1111,
+        "symbol": "000001",
+        "price": 100,
+        "volume": 200,
+        "order_type": "OrderType.LIMIT",
+        "direction": "OrderSide.BUY",
+        "traded_price": "100",
+        "filled_volume": "0",
+        "status": "OrderStatus.SUBMITTING",
+        "create_time": "datetime.now(timezone(timedelta(hours": "8)))",
+        "trader_platform": "PlatformType.QMT.value",
+        "is_active": "True",
+        "strategy_name": "策略二",
+        "execution_strategy: "BasicStrategy",
+        "parent_id": "generate_order_id())"
+    }
+    
+    """ 
+    import uuid
+    from .constant import Order
+    from datetime import datetime, timezone, timedelta
+
+    data = request.json
+    if not data:
+        return jsonify({'error': 'No data provided'}), 400
+    
+    print('请求参数-------', data)
+    order = Order(
+        order_id=data.get('order_id'),
+        symbol=data.get('symbol'),
+        price=data.get('price'),
+        volume=data.get('volume'),
+        order_type=data.get('order_type'),
+        direction=data.get('direction'),
+        traded_price=data.get('traded_price'),
+        filled_volume=data.get('filled_volume'),
+        status=data.get('status'),
+        create_time=datetime.now(timezone(timedelta(hours=8))),
+        trader_platform=data.get('trader_platform'),
+        is_active=data.get('is_active'),
+        strategy_name=data.get('strategy_name') ,
+        execution_strategy=data.get('execution_strategy'),
+        parent_id=uuid.uuid4().hex[:16]
+    )
+
     try:
-        print(f"\n接收到外部订单API请求，内容类型: {request.content_type}")
-        # 获取JSON数据
-        order_data = request.json
-        print(f"解析的JSON数据: {order_data}")
+        conn = sqlite3.connect(storage.db_path)
+        cursor = conn.cursor()
+
+        from dataclasses import asdict
+        from .storage import trans_to_dict
         
-        if not order_data:
-            print("错误: 没有提供有效的订单数据")
-            return "错误：没有提供有效的订单数据", 400
+        order_data = {k:trans_to_dict(v) for k,v in asdict(order).items()}
+
         
-        # 如果是单个订单，转换为列表处理
-        if not isinstance(order_data, list):
-            order_data = [order_data]
+        cursor.execute('''
+        INSERT OR REPLACE INTO orders (
+            order_id, symbol, direction, price, volume,
+            status, create_time, filled_volume,
+            trader_platform, is_active, order_type,
+            is_finished, strategy_name, traded_price, execution_strategy, parent_id
+        ) VALUES (
+            :order_id, :symbol, :direction, :price, :volume,
+            :status, :create_time, :filled_volume,
+            :trader_platform, :is_active, :order_type, 
+            :is_finished, :strategy_name, :traded_price, :execution_strategy, :parent_id
+        )
+        ''', order_data)
         
-        saved_orders = []
-        for order_item in order_data:
-            # 验证必要字段
-            required_fields = ['order_id', 'symbol', 'direction', 'price', 'volume', 'status']
-            if not all(field in order_item for field in required_fields):
-                missing_fields = [field for field in required_fields if field not in order_item]
-                print(f"警告: 订单缺少必要字段 {missing_fields}，跳过此订单")
-                continue  # 跳过缺少必要字段的订单
-            
-            # 创建订单对象
-            try:
-                order = Order(
-                    order_id=order_item.get('order_id'),
-                    symbol=order_item.get('symbol'),
-                    direction=OrderSide(order_item.get('direction')),
-                    price=float(order_item.get('price')),
-                    volume=float(order_item.get('volume')),
-                    status=OrderStatus(order_item.get('status')),
-                    create_time=datetime.fromisoformat(order_item.get('create_time', datetime.now().isoformat())),
-                    filled_volume=float(order_item.get('filled_volume', 0)),
-                    trader_platform=order_item.get('trader_platform', 'EXTERNAL'),
-                    is_active=bool(order_item.get('is_active', True)),
-                    order_type=OrderType(order_item.get('order_type', 'MARKET')),
-                    is_finished=bool(order_item.get('is_finished', False)),
-                    strategy_name=order_item.get('strategy_name', ''),
-                    traded_price=float(order_item.get('traded_price', 0)) if order_item.get('traded_price') else None,
-                    execution_strategy=order_item.get('execution_strategy', ''),
-                    parent_id=order_item.get('parent_id', '')
-                )
-                
-                # 保存订单到数据库
-                storage.save_order(order)
-                saved_orders.append(order_item.get('order_id'))
-                print(f"成功保存订单: {order_item.get('order_id')}")
-                
-                # 记录事件
-                event = Event(
-                    event_type=EventType.ORDER_UPDATE,
-                    data={"order_id": order.order_id},
-                    timestamp=datetime.now()
-                )
-                storage.save_event(event)
-                
-            except (ValueError, TypeError) as e:
-                print(f"处理订单数据错误: {str(e)}")
-                continue
-        
-        # 返回JSON响应
-        result = {
-            "status": "success", 
-            "message": f"成功保存 {len(saved_orders)} 个订单", 
-            "saved_orders": saved_orders
-        }
-        print(f"API响应: {result}")
-        return jsonify(result)
+        conn.commit()
         
     except Exception as e:
-        error_msg = f"接收外部订单数据失败: {str(e)}\n{traceback.format_exc()}"
-        print(error_msg)
-        return jsonify({"status": "error", "message": str(e)}), 500
+        conn.rollback()
+        return jsonify({'error': str(e)}), 500       
+    finally:
+        conn.close()
 
-
-
+    return jsonify({'message': 'Order added successfully'}), 201
 
 

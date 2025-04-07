@@ -13,7 +13,7 @@ class Config:
     
     # 统一日志目录配置
     LOG_FOLDER = os.environ.get('LOG_FOLDER') or os.path.join(basedir, 'logs')
-    
+    TRADING_DATA_PATH = os.environ.get('TRADING_DATA_PATH') or os.path.join(basedir, 'trading_data.db')
     @staticmethod
     def init_app(app):
         # 确保日志目录存在
