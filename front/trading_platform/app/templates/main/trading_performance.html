@@ -174,16 +174,17 @@
                                     <td>{{ code }}</td>
                                     <td>{{ pos.volume }}</td>
                                     <td>{{ pos.sellable_qty }}</td>
-                                    <td>{{ "%.4f"|format(pos.cost / pos.volume if pos.volume else 0) }}</td>
+                                    {% set unit_cost = pos.cost / pos.volume if pos.volume else 0 %}
+                                    <td>{{ "%.4f"|format(unit_cost) if pos.volume else '-' }}</td>
                                     <td>{{ "%.4f"|format(pos.latest_price) if pos.latest_price else '-' }}</td>
-                                    <td>{{ "%.2f"|format(pos.market_value) if pos.market_value else '-' }}</td>
-                                    {% set profit = pos.market_value - pos.cost if pos.market_value else 0 %}
+                                    <td>{{ "%.2f"|format(pos.latest_price*pos.volume) if pos.latest_price and pos.volume else '-' }}</td>
+                                    {% set profit = (pos.latest_price - unit_cost)*pos.volume if pos.latest_price and pos.volume else 0 %}
                                     <td class="{% if profit > 0 %}positive{% elif profit < 0 %}negative{% endif %}">
-                                        {{ "%.2f"|format(profit) if pos.market_value else '-' }}
+                                        {{ "%.2f"|format(profit) if pos.latest_price and pos.volume else '-' }}
                                     </td>
-                                    {% set profit_pct = (pos.market_value / pos.cost - 1) * 100 if pos.market_value and pos.cost else 0 %}
+                                    {% set profit_pct = ((pos.latest_price / unit_cost - 1) * 100) if pos.latest_price and unit_cost > 0 else 0 %}
                                     <td class="{% if profit_pct > 0 %}positive{% elif profit_pct < 0 %}negative{% endif %}">
-                                        {{ "%.2f"|format(profit_pct) if pos.market_value and pos.cost else '-' }}%
+                                        {{ "%.2f"|format(profit_pct) if pos.latest_price and unit_cost > 0 else '-' }}%
                                     </td>
                                 </tr>
                                 {% endfor %}
