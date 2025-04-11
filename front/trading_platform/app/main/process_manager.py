@@ -107,28 +107,3 @@ class ProcessManager:
         self.running = False
         for name in list(self.processes.keys()):
             self.stop_process(name)
-
-# def signal_handler(signum, frame):
-#     # self.logger.info("Received signal to stop")
-#     if manager:
-#         manager.stop_all()
-#     sys.exit(0)
-
-# if __name__ == "__main__":
-#     manager = ProcessManager()
-    
-#     # 注册信号处理器
-#     signal.signal(signal.SIGINT, signal_handler)
-#     signal.signal(signal.SIGTERM, signal_handler)
-
-#     # 启动各个模块
-#     manager.start_process("data_update", ["python", "data_update.py"])
-#     # manager.start_process("minute_maker", ["python", "-m", "csim.tradingapi.minute_maker"])
-#     manager.start_process("livebacktest", ["python", "-m", "csim.main", "Livebacktest.xml"])
-
-#     # 监控进程
-#     try:
-#         manager.monitor_processes()
-#     except KeyboardInterrupt:
-#         # logger.info("Keyboard interrupt received")
-#         manager.stop_all() 

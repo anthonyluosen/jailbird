@@ -187,14 +187,21 @@
         background: rgba(255, 255, 255, 0.5);
         display: inline-block;
         position: relative;
+        padding-right: 50px;
     }
     
     .space-quote::after {
         content: "🚀";
         position: absolute;
         right: 15px;
-        bottom: 10px;
+        top: 50%;
+        transform: translateY(-50%);
         font-size: 1.2em;
+        transition: transform 0.3s ease;
+    }
+
+    .space-quote:hover::after {
+        transform: translateY(-50%) translateX(5px);
     }
 
     .system-info {

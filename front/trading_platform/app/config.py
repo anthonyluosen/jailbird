@@ -24,6 +24,9 @@ class Config:
     # 定义策略回测结果路径
     STRATEGY_RESULTS_PATH = os.environ.get('STRATEGY_RESULTS_PATH') or os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'strategy_results')
     
+    # 定义实盘数据
+    JAILBIRD_DATA_PATH = os.environ.get('JAILBIRD_DATA_PATH') or  os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'account_data_path')
+
     # 确保必要的目录存在
     @staticmethod
     def init_app(app):

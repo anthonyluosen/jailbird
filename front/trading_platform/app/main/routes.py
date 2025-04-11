@@ -285,9 +285,9 @@ def get_process_status():
 def trading_performance():
     """账户交易数据展示页面"""
     # 基础路径设置
-    base_folder = current_app.config.get('ACCOUNT_DATA_PATH', os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'account_data_path'))
+    base_folder = current_app.config.get('JAILBIRD_DATA_PATH', os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'strategy_results'))
+
     backtest_folder = current_app.config.get('STRATEGY_RESULTS_PATH', os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'strategy_results'))
-    
     # 获取所有可用策略
     strategies = []
     try:

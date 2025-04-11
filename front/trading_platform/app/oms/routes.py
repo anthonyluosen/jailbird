@@ -15,7 +15,10 @@ trading_system = None
 main_engine = None
 
 # 创建数据库连接
-storage = DataStorage(os.getenv('TRADING_DATA_PATH'))
+try:
+    storage = DataStorage(os.getenv('TRADING_DATA_PATH'))
+except Exception as e:
+    storage = DataStorage(os.getenv('JAILBIRD_DB_PATH'))
 
 @bp.route('/orders')
 @login_required
