@@ -63,6 +63,69 @@
         font-weight: bold;
         color: #333;
     }
+    .history-positions-table {
+        color: #000 !important;
+    }
+    .history-positions-table td, 
+    .history-positions-table th {
+        color: #000;
+    }
+    /* 优化历史持仓选项卡样式，使其更紧凑 */
+    #historyPositionTabs {
+        display: flex;
+        flex-wrap: wrap;
+        border-bottom: 1px solid #dee2e6;
+    }
+    #historyPositionTabs .nav-item {
+        margin-right: 5px;
+        margin-bottom: 5px;
+    }
+    #historyPositionTabs .nav-link {
+        padding: 5px 10px;
+        font-size: 0.85rem;
+        border-radius: 4px 4px 0 0;
+        background-color: #f8f9fa;
+    }
+    #historyPositionTabs .nav-link.active {
+        background-color: #007bff;
+        color: white;
+        border-color: #007bff;
+    }
+    /* 确保历史持仓表格内容为黑色 */
+    #historyPositionContent .tab-pane table {
+        color: #000;
+    }
+    #historyPositionContent .tab-pane td,
+    #historyPositionContent .tab-pane th {
+        color: #000;
+    }
+    /* 除了涨跌颜色外，保持黑色 */
+    #historyPositionContent .positive,
+    #historyPositionContent .negative {
+        font-weight: bold;
+    }
+    /* 美化日期选择器 */
+    #positionDateSelector {
+        max-width: 200px;
+        font-weight: bold;
+        color: #333;
+        background-color: #f8f9fa;
+        border: 1px solid #007bff;
+        cursor: pointer;
+    }
+    #positionDateSelector option {
+        font-weight: normal;
+        padding: 8px;
+    }
+    .date-selector-container {
+        display: flex;
+        align-items: center;
+    }
+    .date-selector-container label {
+        margin-right: 10px;
+        font-weight: bold;
+        color: #333;
+    }
 </style>
 {% endblock %}
 
@@ -151,50 +214,119 @@
             <!-- 持仓信息 -->
             <div class="card positions-table">
                 <div class="card-header">
-                    <h5>当前持仓</h5>
+                    <h5>持仓记录</h5>
                 </div>
                 <div class="card-body">
-                    <table class="table table-striped">
-                        <thead>
-                            <tr>
-                                <th>证券代码</th>
-                                <th>持仓数量</th>
-                                <th>可卖数量</th>
-                                <th>成本价</th>
-                                <th>最新价</th>
-                                <th>市值</th>
-                                <th>盈亏</th>
-                                <th>盈亏比例</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {% if positions %}
-                                {% for code, pos in positions.items() %}
-                                <tr>
-                                    <td>{{ code }}</td>
-                                    <td>{{ pos.volume }}</td>
-                                    <td>{{ pos.sellable_qty }}</td>
-                                    {% set unit_cost = pos.cost / pos.volume if pos.volume else 0 %}
-                                    <td>{{ "%.4f"|format(unit_cost) if pos.volume else '-' }}</td>
-                                    <td>{{ "%.4f"|format(pos.latest_price) if pos.latest_price else '-' }}</td>
-                                    <td>{{ "%.2f"|format(pos.latest_price*pos.volume) if pos.latest_price and pos.volume else '-' }}</td>
-                                    {% set profit = (pos.latest_price - unit_cost)*pos.volume if pos.latest_price and pos.volume else 0 %}
-                                    <td class="{% if profit > 0 %}positive{% elif profit < 0 %}negative{% endif %}">
-                                        {{ "%.2f"|format(profit) if pos.latest_price and pos.volume else '-' }}
-                                    </td>
-                                    {% set profit_pct = ((pos.latest_price / unit_cost - 1) * 100) if pos.latest_price and unit_cost > 0 else 0 %}
-                                    <td class="{% if profit_pct > 0 %}positive{% elif profit_pct < 0 %}negative{% endif %}">
-                                        {{ "%.2f"|format(profit_pct) if pos.latest_price and unit_cost > 0 else '-' }}%
-                                    </td>
-                                </tr>
+                    {% if positions or historical_positions %}
+                        <!-- 选择模式：选项卡或下拉菜单 -->
+                        <div class="date-selector-container mb-4">
+                            <label for="positionDateSelector">选择日期：</label>
+                            <select class="form-control" id="positionDateSelector" onchange="switchPositionDate(this.value)">
+                                <option value="current" selected>当前持仓 (最新数据)</option>
+                                {% for date, pos_data in historical_positions.items()|sort(reverse=true) %}
+                                <option value="{{ date }}">{{ date }}</option>
                                 {% endfor %}
-                            {% else %}
-                                <tr>
-                                    <td colspan="8" class="text-center">无持仓数据</td>
-                                </tr>
-                            {% endif %}
-                        </tbody>
-                    </table>
+                            </select>
+                        </div>
+                        
+                        <div class="tab-content mt-3" id="historyPositionContent">
+                            <!-- 当前持仓 -->
+                            <div class="tab-pane fade show active" id="pos-current" role="tabpanel">
+                                <table class="table table-striped history-positions-table">
+                                    <thead>
+                                        <tr>
+                                            <th>证券代码</th>
+                                            <th>持仓数量</th>
+                                            <th>可卖数量</th>
+                                            <th>成本价</th>
+                                            <th>最新价</th>
+                                            <th>市值</th>
+                                            <th>盈亏</th>
+                                            <th>盈亏比例</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% if positions %}
+                                            {% for code, pos in positions.items() %}
+                                            <tr>
+                                                <td>{{ code }}</td>
+                                                <td>{{ pos.volume }}</td>
+                                                <td>{{ pos.sellable_qty }}</td>
+                                                {% set unit_cost = pos.cost / pos.volume if pos.volume else 0 %}
+                                                <td>{{ "%.4f"|format(unit_cost) if pos.volume else '-' }}</td>
+                                                <td>{{ "%.4f"|format(pos.latest_price) if pos.latest_price else '-' }}</td>
+                                                <td>{{ "%.2f"|format(pos.latest_price*pos.volume) if pos.latest_price and pos.volume else '-' }}</td>
+                                                {% set profit = (pos.latest_price - unit_cost)*pos.volume if pos.latest_price and pos.volume else 0 %}
+                                                <td class="{% if profit > 0 %}positive{% elif profit < 0 %}negative{% endif %}">
+                                                    {{ "%.2f"|format(profit) if pos.latest_price and pos.volume else '-' }}
+                                                </td>
+                                                {% set profit_pct = ((pos.latest_price / unit_cost - 1) * 100) if pos.latest_price and unit_cost > 0 else 0 %}
+                                                <td class="{% if profit_pct > 0 %}positive{% elif profit_pct < 0 %}negative{% endif %}">
+                                                    {{ "%.2f"|format(profit_pct) if pos.latest_price and unit_cost > 0 else '-' }}%
+                                                </td>
+                                            </tr>
+                                            {% endfor %}
+                                        {% else %}
+                                            <tr>
+                                                <td colspan="8" class="text-center">无持仓数据</td>
+                                            </tr>
+                                        {% endif %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            
+                            <!-- 历史持仓 -->
+                            {% for date, pos_data in historical_positions.items()|sort(reverse=true) %}
+                            <div class="tab-pane fade" id="pos-{{ date }}" role="tabpanel">
+                                <table class="table table-striped history-positions-table">
+                                    <thead>
+                                        <tr>
+                                            <th>证券代码</th>
+                                            <th>持仓数量</th>
+                                            <th>可卖数量</th>
+                                            <th>成本价</th>
+                                            <th>最新价</th>
+                                            <th>市值</th>
+                                            <th>盈亏</th>
+                                            <th>盈亏比例</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% if pos_data %}
+                                            {% for code, pos in pos_data.items() %}
+                                                {% if code != '_last_update' %}
+                                                <tr>
+                                                    <td>{{ code }}</td>
+                                                    <td>{{ pos.volume }}</td>
+                                                    <td>{{ pos.sellable_qty if pos.sellable_qty is defined else pos.volume }}</td>
+                                                    {% set unit_cost = pos.cost / pos.volume if pos.volume else 0 %}
+                                                    <td>{{ "%.4f"|format(unit_cost) if pos.volume else '-' }}</td>
+                                                    <td>{{ "%.4f"|format(pos.latest_price) if pos.latest_price else '-' }}</td>
+                                                    <td>{{ "%.2f"|format(pos.latest_price*pos.volume) if pos.latest_price and pos.volume else '-' }}</td>
+                                                    {% set profit = (pos.latest_price - unit_cost)*pos.volume if pos.latest_price and pos.volume else 0 %}
+                                                    <td class="{% if profit > 0 %}positive{% elif profit < 0 %}negative{% endif %}">
+                                                        {{ "%.2f"|format(profit) if pos.latest_price and pos.volume else '-' }}
+                                                    </td>
+                                                    {% set profit_pct = ((pos.latest_price / unit_cost - 1) * 100) if pos.latest_price and unit_cost > 0 else 0 %}
+                                                    <td class="{% if profit_pct > 0 %}positive{% elif profit_pct < 0 %}negative{% endif %}">
+                                                        {{ "%.2f"|format(profit_pct) if pos.latest_price and unit_cost > 0 else '-' }}%
+                                                    </td>
+                                                </tr>
+                                                {% endif %}
+                                            {% endfor %}
+                                        {% else %}
+                                            <tr>
+                                                <td colspan="8" class="text-center">无持仓数据</td>
+                                            </tr>
+                                        {% endif %}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="alert alert-info">无持仓数据</div>
+                    {% endif %}
                 </div>
             </div>
         </div>
@@ -341,6 +473,20 @@
 {{ super() }}
 <script src="https://cdn.jsdelivr.net/npm/echarts@5.4.2/dist/echarts.min.js"></script>
 <script>
+    // 日期选择函数，用于切换持仓视图
+    function switchPositionDate(dateValue) {
+        // 隐藏所有持仓面板
+        document.querySelectorAll('#historyPositionContent .tab-pane').forEach(function(tabPane) {
+            tabPane.classList.remove('show', 'active');
+        });
+        
+        // 显示选中的持仓面板
+        var selectedPane = document.getElementById('pos-' + dateValue);
+        if (selectedPane) {
+            selectedPane.classList.add('show', 'active');
+        }
+    }
+    
     // 将Jinja模板中的数据转为JS变量
     var performanceSeriesData = JSON.parse('{{ performance_series|tojson|safe }}');
     var backtestDataJson = JSON.parse('{{ backtest_data|tojson|safe }}');

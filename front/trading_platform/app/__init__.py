@@ -6,9 +6,12 @@ from app.config import Config
 import os
 from dotenv import load_dotenv
 
+# # 加载环境变量
+# load_dotenv()
 # 加载环境变量
-load_dotenv()
-
+dotenv_path = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), '.env')
+print(dotenv_path)
+load_dotenv(dotenv_path)
 # 创建扩展实例
 db = SQLAlchemy()
 migrate = Migrate()

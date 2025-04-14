@@ -285,8 +285,7 @@ def get_process_status():
 def trading_performance():
     """账户交易数据展示页面"""
     # 基础路径设置
-    base_folder = current_app.config.get('JAILBIRD_DATA_PATH', os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'strategy_results'))
-
+    base_folder = current_app.config.get('ACCOUNT_DATA_PATH', os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'strategy_results'))
     backtest_folder = current_app.config.get('STRATEGY_RESULTS_PATH', os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__)))), 'strategy_results'))
     # 获取所有可用策略
     strategies = []
@@ -455,10 +454,19 @@ def trading_performance():
     # 收集策略的绩效数据
     performance_data = {}
     positions_data = {}
-    
+    latest_data_time = ''  # 用于跟踪最新的数据时间
+
+    # 用于存储历史持仓数据
+    historical_positions = {}
+
     # 首先检查是否有根目录数据，并提取持仓信息
     if root_strategy_data:
-        positions_data = root_strategy_data.get('positions', {})
+        # 记录根目录数据的last_update时间
+        root_last_update = root_strategy_data.get('last_update', '')
+        if root_last_update:
+            latest_data_time = root_last_update
+            positions_data = root_strategy_data.get('positions', {})
+            current_app.logger.info(f"根目录数据 last_update: {root_last_update}")
         
         # 如果只有根目录数据，也添加到性能数据中
         latest_date = datetime.now().strftime('%Y-%m-%d')
@@ -470,7 +478,7 @@ def trading_performance():
             'returns': (root_strategy_data.get('total_assets', 0) / root_strategy_data.get('initial_capital', 100000)) - 1,
             'fees': root_strategy_data.get('fees', 0)
         }
-        
+
     # 然后遍历所有日期文件夹，收集历史数据
     if selected_strategy and dates:
         for date in dates:
@@ -490,11 +498,27 @@ def trading_performance():
                             'fees': data.get('fees', 0)
                         }
                         
-                        # 如果还没有持仓数据或这是最新日期，更新持仓数据
-                        if not positions_data and date == dates[-1]:
+                        # 收集持仓数据，与日期一起保存
+                        if data.get('positions'):
+                            # 将当前数据的last_update添加到历史持仓数据中以便显示
+                            pos_data = data.get('positions', {})
+                            if isinstance(pos_data, dict):
+                                pos_data['_last_update'] = data.get('last_update', '')
+                            historical_positions[date] = pos_data
+                        
+                        # 根据last_update时间来决定是否更新当前持仓
+                        current_data_time = data.get('last_update', '')
+                        
+                        # 如果当前数据的last_update比已记录的最新时间更新，则更新持仓数据
+                        if current_data_time and (not latest_data_time or current_data_time > latest_data_time):
+                            latest_data_time = current_data_time
                             positions_data = data.get('positions', {})
+                            current_app.logger.info(f"更新持仓数据，日期: {date}, last_update: {current_data_time}")
+                            
             except Exception as e:
                 current_app.logger.error(f"读取{date}日{selected_strategy}策略数据失败: {str(e)}")
+
+    current_app.logger.info(f"最终使用的last_update时间: {latest_data_time}")
     
     # 按日期排序
     performance_series = [
@@ -542,6 +566,8 @@ def trading_performance():
                          selected_strategy=selected_strategy,
                          performance_series=performance_series,
                          positions=processed_positions,
+                         historical_positions=historical_positions,
+                         latest_data_time=latest_data_time,
                          backtest_strategies=backtest_strategies,
                          selected_backtest_strategy=selected_backtest_strategy,
                          backtest_data=selected_backtest_data,
