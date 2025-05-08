@@ -8,7 +8,7 @@ sys.path.insert(0, project_dir)
 from app import create_app
 
 app = create_app()
-
+a='aaaaaa'
 if __name__ == '__main__':
     app.run(
         port=8000,

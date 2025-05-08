@@ -70,7 +70,7 @@ def create_app(config_class=Config):
     @app.before_request
     def require_login():
         # 允许访问静态文件和登录/注册相关路由，以及外部订单API
-        allowed_routes = ['auth.login', 'auth.logout', 'static']
+        allowed_routes = ['auth.login', 'auth.logout', 'auth.register', 'static']
         allowed_endpoints = ['oms.receive_external_orders']  # 允许外部订单API无需登录
         
         if not current_user.is_authenticated and \

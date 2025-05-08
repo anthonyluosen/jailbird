@@ -1,8 +1,9 @@
 from flask import render_template, redirect, url_for, flash, request
 from flask_login import login_user, logout_user, current_user, login_required
 from app.auth import bp
-from app.auth.forms import LoginForm
+from app.auth.forms import LoginForm, RegistrationForm
 from app.models import User
+from app import db
 
 @bp.route('/login', methods=['GET', 'POST'])
 def login():
@@ -39,6 +40,22 @@ def login():
         return redirect(next_page)
     
     return render_template('auth/login.html', title='登录', form=form)
+
+@bp.route('/register', methods=['GET', 'POST'])
+def register():
+    if current_user.is_authenticated:
+        return redirect(url_for('main.index'))
+    
+    form = RegistrationForm()
+    if form.validate_on_submit():
+        user = User(username=form.username.data)
+        user.set_password(form.password.data)
+        db.session.add(user)
+        db.session.commit()
+        flash('注册成功！请登录', 'success')
+        return redirect(url_for('auth.login'))
+    
+    return render_template('auth/register.html', title='注册', form=form)
 
 @bp.route('/logout')
 def logout():
