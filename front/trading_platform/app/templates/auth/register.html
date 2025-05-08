@@ -1,0 +1,449 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="login-page">
+    <!-- 装饰元素 -->
+    <div class="shape shape-1"></div>
+    <div class="shape shape-2"></div>
+    <div class="shape shape-3"></div>
+    <div class="shape shape-4"></div>
+    
+    <div class="login-container">
+        <!-- 左侧图片和品牌区域 -->
+        <div class="brand-section">
+            <div class="brand-header">
+                <h1 class="logo">A GANG</h1>
+            </div>
+            
+            <div class="brand-image">
+                <img src="{{ url_for('static', filename='images/main-image.jpg') }}" alt="A GANG">
+                <div class="image-overlay"></div>
+            </div>
+            
+            <div class="brand-footer">
+                <div class="feature">
+                    <i class="fas fa-shield-alt"></i>
+                    <span>安全可靠</span>
+                </div>
+                <div class="feature">
+                    <i class="fas fa-chart-line"></i>
+                    <span>高效管理</span>
+                </div>
+                <div class="feature">
+                    <i class="fas fa-sync-alt"></i>
+                    <span>实时更新</span>
+                </div>
+            </div>
+        </div>
+        
+        <!-- 右侧注册表单区域 -->
+        <div class="form-section">
+            <div class="form-header">
+                <h2>创建账户</h2>
+                <p>请填写以下信息完成注册</p>
+            </div>
+            
+            {% with messages = get_flashed_messages() %}
+            {% if messages %}
+                <div class="alert alert-danger">
+                    <i class="fas fa-exclamation-circle"></i>
+                    {% for message in messages %}
+                        {{ message }}
+                    {% endfor %}
+                </div>
+            {% endif %}
+            {% endwith %}
+            
+            <form action="" method="post" novalidate class="login-form">
+                {{ form.hidden_tag() }}
+                
+                <div class="form-group">
+                    <label for="{{ form.username.id }}">用户名</label>
+                    <div class="input-group">
+                        <i class="fas fa-user"></i>
+                        {{ form.username(class="form-input", placeholder="请输入用户名") }}
+                    </div>
+                    {% for error in form.username.errors %}
+                        <div class="error"><i class="fas fa-exclamation-circle"></i> {{ error }}</div>
+                    {% endfor %}
+                </div>
+                
+                <div class="form-group">
+                    <label for="{{ form.password.id }}">密码</label>
+                    <div class="input-group">
+                        <i class="fas fa-lock"></i>
+                        {{ form.password(class="form-input", placeholder="请输入密码") }}
+                        <button type="button" class="toggle-password" onclick="togglePasswordVisibility()">
+                            <i class="fas fa-eye" id="toggleIcon"></i>
+                        </button>
+                    </div>
+                    {% for error in form.password.errors %}
+                        <div class="error"><i class="fas fa-exclamation-circle"></i> {{ error }}</div>
+                    {% endfor %}
+                </div>
+                
+                <div class="form-group">
+                    <label for="{{ form.password2.id }}">确认密码</label>
+                    <div class="input-group">
+                        <i class="fas fa-lock"></i>
+                        {{ form.password2(class="form-input", placeholder="请再次输入密码") }}
+                        <button type="button" class="toggle-password" onclick="togglePassword2Visibility()">
+                            <i class="fas fa-eye" id="toggleIcon2"></i>
+                        </button>
+                    </div>
+                    {% for error in form.password2.errors %}
+                        <div class="error"><i class="fas fa-exclamation-circle"></i> {{ error }}</div>
+                    {% endfor %}
+                </div>
+                
+                <div class="form-action">
+                    {{ form.submit(class="btn-login", value="注 册") }}
+                </div>
+                
+                <div class="form-footer">
+                    <p>已有账户？ <a href="{{ url_for('auth.login') }}">立即登录</a></p>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<style>
+/* 复用登录页面的样式 */
+:root {
+    /* 主色调 */
+    --primary: #4361ee;
+    --primary-dark: #3a56d4;
+    --primary-light: #edf2ff;
+    --secondary: #2ec4b6;
+    
+    /* 文字颜色 */
+    --text-dark: #333333;
+    --text-medium: #555555;
+    --text-light: #888888;
+    
+    /* 背景颜色 */
+    --bg-light: #ffffff;
+    --bg-medium: #f8faff;
+    --bg-dark: #f0f4ff;
+    
+    /* 状态颜色 */
+    --error: #ef476f;
+    --success: #06d6a0;
+    --warning: #ffd166;
+    
+    /* 尺寸 */
+    --radius-sm: 8px;
+    --radius-md: 12px;
+    --radius-lg: 20px;
+}
+
+/* 全局重置 */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+}
+
+body {
+    font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    background-color: var(--bg-medium);
+    color: var(--text-dark);
+    height: 100vh;
+    overflow: hidden;
+}
+
+/* 页面容器 */
+.login-page {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    background: linear-gradient(135deg, #f5f7ff 0%, #e9efff 100%);
+    position: relative;
+    overflow: hidden;
+}
+
+/* 装饰形状 */
+.shape {
+    position: absolute;
+    border-radius: 50%;
+    animation: float 15s infinite ease-in-out;
+}
+
+.shape-1 {
+    width: 250px;
+    height: 250px;
+    background: linear-gradient(to right, rgba(67, 97, 238, 0.12), rgba(46, 196, 182, 0.08));
+    top: -100px;
+    left: -100px;
+    animation-delay: 0s;
+}
+
+.shape-2 {
+    width: 350px;
+    height: 350px;
+    background: linear-gradient(to right, rgba(46, 196, 182, 0.08), rgba(67, 97, 238, 0.12));
+    bottom: -150px;
+    right: -150px;
+    animation-delay: 2s;
+}
+
+.shape-3 {
+    width: 150px;
+    height: 150px;
+    background: linear-gradient(to right, rgba(67, 97, 238, 0.1), rgba(46, 196, 182, 0.05));
+    top: 60%;
+    left: 15%;
+    animation-delay: 1s;
+}
+
+.shape-4 {
+    width: 200px;
+    height: 200px;
+    background: linear-gradient(to right, rgba(46, 196, 182, 0.05), rgba(67, 97, 238, 0.1));
+    top: 20%;
+    right: 10%;
+    animation-delay: 3s;
+}
+
+@keyframes float {
+    0%, 100% {
+        transform: translateY(0) rotate(0deg);
+    }
+    50% {
+        transform: translateY(-20px) rotate(5deg);
+    }
+}
+
+/* 登录容器 */
+.login-container {
+    display: flex;
+    width: 1000px;
+    height: 600px;
+    background: var(--bg-light);
+    border-radius: var(--radius-lg);
+    box-shadow: 0 20px 40px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    position: relative;
+    z-index: 1;
+}
+
+/* 品牌区域 */
+.brand-section {
+    flex: 1;
+    background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+    padding: 40px;
+    color: white;
+    position: relative;
+    overflow: hidden;
+}
+
+.brand-header {
+    margin-bottom: 40px;
+}
+
+.logo {
+    font-size: 2em;
+    font-weight: bold;
+    letter-spacing: 2px;
+}
+
+.brand-image {
+    position: relative;
+    height: 300px;
+    margin: 20px 0;
+    border-radius: var(--radius-md);
+    overflow: hidden;
+}
+
+.brand-image img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.image-overlay {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: linear-gradient(to bottom, rgba(0,0,0,0.2), rgba(0,0,0,0.4));
+}
+
+.brand-footer {
+    display: flex;
+    justify-content: space-between;
+    margin-top: 40px;
+}
+
+.feature {
+    text-align: center;
+}
+
+.feature i {
+    font-size: 1.5em;
+    margin-bottom: 10px;
+}
+
+/* 表单区域 */
+.form-section {
+    flex: 1;
+    padding: 40px;
+    display: flex;
+    flex-direction: column;
+}
+
+.form-header {
+    text-align: center;
+    margin-bottom: 30px;
+}
+
+.form-header h2 {
+    font-size: 1.8em;
+    color: var(--text-dark);
+    margin-bottom: 10px;
+}
+
+.form-header p {
+    color: var(--text-light);
+}
+
+.alert {
+    padding: 12px;
+    border-radius: var(--radius-sm);
+    background: rgba(239, 71, 111, 0.1);
+    color: var(--error);
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.form-group {
+    margin-bottom: 20px;
+}
+
+.form-group label {
+    display: block;
+    margin-bottom: 8px;
+    color: var(--text-medium);
+}
+
+.input-group {
+    position: relative;
+}
+
+.input-group i {
+    position: absolute;
+    left: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--text-light);
+}
+
+.form-input {
+    width: 100%;
+    padding: 12px 12px 12px 40px;
+    border: 1px solid #ddd;
+    border-radius: var(--radius-sm);
+    font-size: 1em;
+    transition: all 0.3s;
+}
+
+.form-input:focus {
+    border-color: var(--primary);
+    box-shadow: 0 0 0 3px var(--primary-light);
+    outline: none;
+}
+
+.toggle-password {
+    position: absolute;
+    right: 12px;
+    top: 50%;
+    transform: translateY(-50%);
+    background: none;
+    border: none;
+    color: var(--text-light);
+    cursor: pointer;
+    padding: 0;
+}
+
+.error {
+    color: var(--error);
+    font-size: 0.9em;
+    margin-top: 5px;
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.form-action {
+    margin-top: 30px;
+}
+
+.btn-login {
+    width: 100%;
+    padding: 12px;
+    background: var(--primary);
+    color: white;
+    border: none;
+    border-radius: var(--radius-sm);
+    font-size: 1em;
+    cursor: pointer;
+    transition: all 0.3s;
+}
+
+.btn-login:hover {
+    background: var(--primary-dark);
+}
+
+.form-footer {
+    text-align: center;
+    margin-top: 20px;
+    color: var(--text-light);
+}
+
+.form-footer a {
+    color: var(--primary);
+    text-decoration: none;
+}
+
+.form-footer a:hover {
+    text-decoration: underline;
+}
+</style>
+
+<script>
+function togglePasswordVisibility() {
+    const passwordInput = document.querySelector('input[name="password"]');
+    const toggleIcon = document.getElementById('toggleIcon');
+    
+    if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        toggleIcon.classList.remove('fa-eye');
+        toggleIcon.classList.add('fa-eye-slash');
+    } else {
+        passwordInput.type = 'password';
+        toggleIcon.classList.remove('fa-eye-slash');
+        toggleIcon.classList.add('fa-eye');
+    }
+}
+
+function togglePassword2Visibility() {
+    const passwordInput = document.querySelector('input[name="password2"]');
+    const toggleIcon = document.getElementById('toggleIcon2');
+    
+    if (passwordInput.type === 'password') {
+        passwordInput.type = 'text';
+        toggleIcon.classList.remove('fa-eye');
+        toggleIcon.classList.add('fa-eye-slash');
+    } else {
+        passwordInput.type = 'password';
+        toggleIcon.classList.remove('fa-eye-slash');
+        toggleIcon.classList.add('fa-eye');
+    }
+}
+</script>
+{% endblock %} 

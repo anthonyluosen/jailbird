@@ -43,14 +43,14 @@
                 <p>请登录您的账户以继续</p>
             </div>
             
-            {% with messages = get_flashed_messages() %}
+            {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
-                <div class="alert alert-danger">
-                    <i class="fas fa-exclamation-circle"></i>
-                    {% for message in messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">
+                        <i class="fas fa-{% if category == 'success' %}check-circle{% else %}exclamation-circle{% endif %}"></i>
                         {{ message }}
-                    {% endfor %}
-                </div>
+                    </div>
+                {% endfor %}
             {% endif %}
             {% endwith %}
             
@@ -92,11 +92,16 @@
                 <div class="form-action">
                     {{ form.submit(class="btn-login", value="登 录") }}
                 </div>
+                
+                <div class="form-footer">
+                    <p>还没有账户？ <a href="{{ url_for('auth.register') }}">立即注册</a></p>
+                </div>
             </form>
-            
+                        
             <div class="form-footer">
                 <p>&copy; 2023 A GANG · 专业的管理系统</p>
             </div>
+
         </div>
     </div>
 </div>
@@ -503,6 +508,12 @@ body {
     background-color: rgba(239, 71, 111, 0.1);
     border-left: 4px solid var(--error);
     color: var(--error);
+}
+
+.alert-success {
+    background-color: rgba(6, 214, 160, 0.1);
+    border-left: 4px solid var(--success);
+    color: var(--success);
 }
 
 /* 动画效果 */

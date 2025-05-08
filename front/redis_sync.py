@@ -1,5 +1,5 @@
 import sys
-sys.path.append(r'F:\workspace\jailbird\front\trading_platform')
+sys.path.append(r'E:\Desktop\temp\jailbird\front\trading_data.db')
 import json
 import redis
 import threading

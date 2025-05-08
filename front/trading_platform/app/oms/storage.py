@@ -7,6 +7,8 @@ import sqlite3
 from dataclasses import asdict
 from app.oms.constant import Order, Event, EventType, OrderStatus, OrderSide, OrderType
 import traceback
+import os
+
 class EnumEncoder(json.JSONEncoder):
     """处理枚举类型的JSON编码器"""
     def default(self, obj):
@@ -31,6 +33,7 @@ class EnumEncoder(json.JSONEncoder):
                 # 如果解码失败，转换为十六进制字符串
                 return obj.hex()
         return super().default(obj)
+
 def trans_to_dict(obj):
     if hasattr(obj, "value") and not isinstance(obj, type):
         return obj.value
@@ -52,6 +55,7 @@ def trans_to_dict(obj):
             # 如果解码失败，转换为十六进制字符串
             return obj.hex()
     return obj
+
 def trans_order_to_dict(row: Order,column_map) -> Order:
     
     return Order(
@@ -77,6 +81,8 @@ def trans_order_to_dict(row: Order,column_map) -> Order:
 class DataStorage:
     """数据存储类，负责订单和事件的持久化"""
     def __init__(self, db_path: str = "trading_data.db"):
+        # 确保数据目录存在
+        os.makedirs(os.path.dirname(db_path), exist_ok=True)
         self.db_path = db_path
         self._init_db()
         self._migrate_db()  # 添加迁移步骤
