@@ -36,72 +36,201 @@
             </div>
         </div>
         
-        <!-- 右侧登录表单区域 -->
+        <!-- 右侧注册表单区域 -->
         <div class="form-section">
             <div class="form-header">
-                <h2>欢迎回来</h2>
-                <p>请登录您的账户以继续</p>
+                <h2>注册账户</h2>
+                <p>请输入您的信息以完成注册</p>
             </div>
             
-            {% with messages = get_flashed_messages() %}
-            {% if messages %}
-                <div class="alert alert-danger">
-                    <i class="fas fa-exclamation-circle"></i>
-                    {% for message in messages %}
-                        {{ message }}
-                    {% endfor %}
-                </div>
-            {% endif %}
-            {% endwith %}
-            
-            <form action="" method="post" novalidate class="login-form">
-                {{ form.hidden_tag() }}
-                
+            <form id="registerForm" novalidate class="register-form">
                 <div class="form-group">
-                    <label for="{{ form.username.id }}">用户名</label>
+                    <label for="email">邮箱地址</label>
                     <div class="input-group">
-                        <i class="fas fa-user"></i>
-                        {{ form.username(class="form-input", placeholder="输入您的用户名") }}
+                        <input type="email" id="email" name="email" class="form-input" placeholder="输入您的邮箱" required>
+                        <button type="button" id="sendCodeBtn" class="btn btn-small" onclick="sendCode()">发送验证码</button>
                     </div>
-                    {% for error in form.username.errors %}
-                        <div class="error"><i class="fas fa-exclamation-circle"></i> {{ error }}</div>
-                    {% endfor %}
                 </div>
                 
                 <div class="form-group">
-                    <label for="{{ form.password.id }}">密码</label>
+                    <label for="code">验证码</label>
+                    <div class="input-group">
+                        <i class="fas fa-key"></i>
+                        <input id="code" name="code" class="form-input" placeholder="输入验证码" required>
+                    </div>
+                </div>
+
+                <div class="form-group">
+                    <label for="password">密码</label>
                     <div class="input-group">
                         <i class="fas fa-lock"></i>
-                        {{ form.password(class="form-input", placeholder="输入您的密码") }}
+                        <input type="password" id="password" name="password" class="form-input" placeholder="输入您的密码" required>
                         <button type="button" class="toggle-password" onclick="togglePasswordVisibility()">
                             <i class="fas fa-eye" id="toggleIcon"></i>
                         </button>
                     </div>
-                    {% for error in form.password.errors %}
-                        <div class="error"><i class="fas fa-exclamation-circle"></i> {{ error }}</div>
-                    {% endfor %}
-                </div>
-                
-                <div class="form-options">
-                    <div class="remember-me">
-                        {{ form.remember_me() }}
-                        <label for="{{ form.remember_me.id }}" class="checkbox-label">记住我</label>
-                    </div>
-                    <a href="/auth/register" style="float: right; text-decoration: none; color: var(--primary); font-size: 16px; font-weight: bold;">注册账号</a>
                 </div>
                 
                 <div class="form-action">
-                    {{ form.submit(class="btn-login", value="登 录") }}
+                    <button type="button" id="registerBtn" class="btn-login" onclick="register()">注 册</button>
                 </div>
             </form>
-            
-            <div class="form-footer">
-                <p>&copy; 2023 A GANG · 专业的管理系统</p>
-            </div>
         </div>
     </div>
 </div>
 
+<script>
+function sendCode() {
+    const emailField = document.getElementById("email");
+    const email = emailField.value.trim();
+    const messageDiv = document.querySelector(".form-section .form-header p"); // 用于显示反馈消息
+    const sendCodeBtn = document.getElementById("sendCodeBtn");
+
+    // 清空消息显示
+    messageDiv.textContent = "请输入您的信息以完成注册";
+    messageDiv.style.color = ""; // 恢复默认颜色
+
+    // 校验邮箱是否为空
+    if (!email) {
+        messageDiv.textContent = "请输入邮箱地址";
+        messageDiv.style.color = "var(--error)";
+        return;
+    }
+
+    // 禁用按钮，防止重复点击
+    sendCodeBtn.disabled = true;
+    sendCodeBtn.textContent = "发送中...";
+
+    // 调用后端发送邮件接口
+    fetch('/auth/sign_up/send_email', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email: email }),
+    })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                // 显示错误消息
+                messageDiv.textContent = data.error;
+                messageDiv.style.color = "var(--error)";
+            } else {
+                // 显示成功消息
+                messageDiv.textContent = "验证码发送成功，请检查您的邮箱";
+                messageDiv.style.color = "var(--success)";
+            }
+        })
+        .catch(err => {
+            // 显示请求错误
+            messageDiv.textContent = "发送失败，请稍后重试";
+            messageDiv.style.color = "var(--error)";
+        })
+        .finally(() => {
+            // 恢复按钮状态
+            sendCodeBtn.disabled = false;
+            sendCodeBtn.textContent = "发送验证码";
+        });
+}
+
+function register() {
+    const email = document.getElementById('email').value.trim();
+    const password = document.getElementById('password').value.trim();
+    const code = document.getElementById('code').value.trim();
+    const messageDiv = document.querySelector(".form-section .form-header p");
+    const registerBtn = document.getElementById("registerBtn");
+
+    // 清空消息显示
+    messageDiv.textContent = "请输入您的信息以完成注册";
+    messageDiv.style.color = "";
+
+    // 校验输入是否完整
+    if (!email || !password || !code) {
+        messageDiv.textContent = "请填写所有字段";
+        messageDiv.style.color = "var(--error)";
+        return;
+    }
+
+    // 禁用按钮，防止重复点击
+    registerBtn.disabled = true;
+    registerBtn.textContent = "注册中...";
+
+    // 调用后端验证邮箱接口
+    fetch('/auth/sign_up/verify_email', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ email: email, code: code }),
+    })
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                // 显示错误消息
+                messageDiv.textContent = data.error;
+                messageDiv.style.color = "var(--error)";
+                registerBtn.disabled = false;
+                registerBtn.textContent = "注 册";
+            } else {
+                // 验证成功后调用注册接口
+                fetch('/auth/sign_up', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ email: email, password: password }),
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.error) {
+                            // 显示错误消息
+                            messageDiv.textContent = data.error;
+                            messageDiv.style.color = "var(--error)";
+                        } else {
+                            // 显示成功消息
+                            messageDiv.textContent = "注册成功";
+                            messageDiv.style.color = "var(--success)";
+                            setTimeout(() => {
+                                 window.location.href = '/auth/login';
+                            }, 2000);
+                        }
+                    })
+                    .catch(err => {
+                        // 显示请求错误
+                        messageDiv.textContent = "注册失败，请稍后重试";
+                        messageDiv.style.color = "var(--error)";
+                    })
+                    .finally(() => {
+                        // 恢复按钮状态
+                        registerBtn.disabled = false;
+                        registerBtn.textContent = "注 册";
+                    });
+            }
+        })
+        .catch(err => {
+            // 显示请求错误
+            messageDiv.textContent = "验证码验证失败，请稍后重试";
+            messageDiv.style.color = "var(--error)";
+            registerBtn.disabled = false;
+            registerBtn.textContent = "注 册";
+        });
+}
+
+function togglePasswordVisibility() {
+    const passwordField = document.getElementById('password');
+    const toggleIcon = document.getElementById('toggleIcon');
+
+    if (passwordField.type === 'password') {
+        passwordField.type = 'text';
+        toggleIcon.classList.remove('fa-eye');
+        toggleIcon.classList.add('fa-eye-slash');
+    } else {
+        passwordField.type = 'password';
+        toggleIcon.classList.remove('fa-eye-slash');
+        toggleIcon.classList.add('fa-eye');
+    }
+}
+</script>
 <style>
 :root {
     /* 主色调 */
@@ -109,22 +238,22 @@
     --primary-dark: #3a56d4;
     --primary-light: #edf2ff;
     --secondary: #2ec4b6;
-    
+
     /* 文字颜色 */
     --text-dark: #333333;
     --text-medium: #555555;
     --text-light: #888888;
-    
+
     /* 背景颜色 */
     --bg-light: #ffffff;
     --bg-medium: #f8faff;
     --bg-dark: #f0f4ff;
-    
+
     /* 状态颜色 */
     --error: #ef476f;
     --success: #06d6a0;
     --warning: #ffd166;
-    
+
     /* 尺寸 */
     --radius-sm: 8px;
     --radius-md: 12px;
@@ -525,25 +654,25 @@ body {
         height: auto;
         max-height: none;
     }
-    
+
     .brand-section, .form-section {
         width: 100%;
     }
-    
+
     .brand-section {
         min-height: 300px;
     }
-    
+
     .brand-header {
         top: 20px;
         left: 20px;
     }
-    
+
     .brand-footer {
         padding: 0 20px;
         bottom: 20px;
     }
-    
+
     .form-section {
         padding: 40px 30px;
     }
@@ -553,17 +682,17 @@ body {
     .login-container {
         max-width: 95%;
     }
-    
+
     .form-section {
         padding: 30px 20px;
     }
-    
+
     .brand-footer {
         flex-direction: column;
         gap: 10px;
         bottom: 10px;
     }
-    
+
     .feature {
         width: 100%;
         flex-direction: row;
@@ -571,16 +700,16 @@ body {
         gap: 15px;
         padding: 10px;
     }
-    
+
     .feature i {
         margin-bottom: 0;
         margin-right: 8px;
     }
-    
+
     .form-header h2 {
         font-size: 28px;
     }
-    
+
     .form-input {
         padding: 14px 15px 14px 45px;
         font-size: 16px;
@@ -592,7 +721,7 @@ body {
 function togglePasswordVisibility() {
     const passwordField = document.querySelector('input[type="password"]');
     const toggleIcon = document.getElementById('toggleIcon');
-    
+
     if (passwordField.type === 'password') {
         passwordField.type = 'text';
         toggleIcon.classList.remove('fa-eye');
@@ -607,7 +736,7 @@ function togglePasswordVisibility() {
 // 添加输入框动画效果
 document.addEventListener('DOMContentLoaded', function() {
     const inputs = document.querySelectorAll('.form-input');
-    
+
     inputs.forEach(input => {
         // 初始状态下如果有值，则将图标颜色改为主色调
         if (input.value) {
@@ -616,7 +745,7 @@ document.addEventListener('DOMContentLoaded', function() {
                 icon.style.color = 'var(--primary)';
             }
         }
-        
+
         // 监听输入变化
         input.addEventListener('input', function() {
             const icon = this.parentElement.querySelector('i');
@@ -629,7 +758,7 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         });
     });
-    
+
     // 页面加载时各元素的渐入动画
     const elements = [
         '.brand-header',
@@ -638,7 +767,7 @@ document.addEventListener('DOMContentLoaded', function() {
         '.login-form',
         '.form-footer'
     ];
-    
+
     elements.forEach((selector, index) => {
         const element = document.querySelector(selector);
         if (element) {
@@ -646,7 +775,7 @@ document.addEventListener('DOMContentLoaded', function() {
             element.style.transform = 'translateY(20px)';
             element.style.transition = 'all 0.5s ease';
             element.style.transitionDelay = `${index * 0.1}s`;
-            
+
             setTimeout(() => {
                 element.style.opacity = '1';
                 element.style.transform = 'translateY(0)';
@@ -655,4 +784,4 @@ document.addEventListener('DOMContentLoaded', function() {
     });
 });
 </script>
-{% endblock %} 
+{% endblock %}

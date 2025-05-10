@@ -5,6 +5,7 @@ import sys
 current_dir = os.path.dirname(os.path.abspath(__file__))
 project_dir = os.path.dirname(current_dir)  # 回到上一级目录
 sys.path.insert(0, project_dir)
+sys.path.append(r"D:\\Project\\anthony\\jailbird-main\\front\\trading_platform")
 
 from trading_platform.app import create_app
 from trading_platform.app.models import User
